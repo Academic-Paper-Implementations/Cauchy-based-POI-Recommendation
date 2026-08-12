@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #f0f9ff;
+  --color-primary-100: #e0f2fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
+  --color-primary-800: #075985;
+  --color-primary-900: #0c4a6e;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a);
+    color: #f1f5f9;
+  }
+}
+
+@layer components {
+  .card {
+    background-color: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(12px);
+    border: 1px solid #334155;
+    border-radius: 0.5rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+
+  .btn-primary {
+    background-color: var(--color-primary-600);
+    color: white;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-primary-700);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn-secondary {
+    background-color: #334155;
+    color: white;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover {
+    background-color: #475569;
+  }
+
+  .input-field {
+    background-color: rgba(51, 65, 85, 0.5);
+    border: 1px solid #475569;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: #f1f5f9;
+  }
+
+  .input-field::placeholder {
+    color: #94a3b8;
+  }
+
+  .input-field:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: var(--color-primary-500);
+    border-color: transparent;
+  }
+
+  .select-field {
+    background-color: rgba(51, 65, 85, 0.5);
+    border: 1px solid #475569;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: #f1f5f9;
+  }
+
+  .select-field:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: var(--color-primary-500);
+    border-color: transparent;
+  }
+}

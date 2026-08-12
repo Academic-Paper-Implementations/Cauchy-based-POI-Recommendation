@@ -1,0 +1,19 @@
+.git
+.gitignore
+node_modules
+dist
+.env
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+
+# Generated at run time: prepared datasets, job workspaces, result cache
+server/runtime
+
+# Compiled locally; the image builds its own binary in the engine stage
+server/engine/bin
+server/engine/out
+
+plans
+README_DEMO.md

@@ -1,0 +1,39 @@
+{
+  "name": "spatial_web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "api": "python -m uvicorn server.main:app --reload --port 8000",
+    "dev:all": "concurrently -k -n web,api -c cyan,green \"npm:dev\" \"npm:api\"",
+    "build": "vite build",
+    "start": "python -m uvicorn server.main:app --host 0.0.0.0 --port 8000",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "autoprefixer": "^10.4.23",
+    "leaflet": "^1.9.4",
+    "papaparse": "^5.5.3",
+    "plotly.js": "^3.3.1",
+    "postcss": "^8.5.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-plotly.js": "^2.6.0",
+    "tailwindcss": "^4.1.18"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "vite": "^7.2.4"
+  }
+}
