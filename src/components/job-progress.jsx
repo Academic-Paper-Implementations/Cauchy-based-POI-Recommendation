@@ -20,15 +20,10 @@ const STATUS_STYLES = {
 };
 
 export default function JobProgress({ job, error }) {
-  if (error) {
-    return (
-      <div className="card border-red-500/40 p-4 text-sm text-red-300">{error}</div>
-    );
-  }
   if (!job) {
     return (
       <div className="card p-4 text-sm text-slate-400">
-        No job yet. Pick a dataset and run mining.
+        {error ? <span className="text-red-300">{error}</span> : 'No job yet. Pick a dataset and run mining.'}
       </div>
     );
   }
@@ -38,6 +33,15 @@ export default function JobProgress({ job, error }) {
 
   return (
     <div className="card space-y-3 p-4">
+      {/* A transient poll failure must not erase the progress it was reporting:
+          the run continues on the server whether or not the browser can reach
+          it, so the warning sits above the stages instead of replacing them. */}
+      {error && (
+        <p className="rounded border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs text-red-300">
+          {error}
+        </p>
+      )}
+
       <div className="flex items-center justify-between">
         <span
           className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${

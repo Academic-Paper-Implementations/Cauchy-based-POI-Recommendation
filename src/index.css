@@ -71,11 +71,14 @@
     color: #94a3b8;
   }
 
-  .input-field:focus {
-    outline: none;
-    ring: 2px;
-    ring-color: var(--color-primary-500);
-    border-color: transparent;
+  /* Keyboard focus has to stay visible. `ring`/`ring-color` are Tailwind utility
+     names, not CSS properties: written inside a component layer the browser drops
+     them and only `outline: none` survives, which removes the focus state
+     entirely. Plain `outline` on `:focus-visible` keeps mouse clicks quiet while
+     tabbing still shows where you are. */
+  .input-field:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
   }
 
   .select-field {
@@ -86,10 +89,18 @@
     color: #f1f5f9;
   }
 
-  .select-field:focus {
-    outline: none;
-    ring: 2px;
-    ring-color: var(--color-primary-500);
-    border-color: transparent;
+  .select-field:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+  }
+
+  /* Buttons, range sliders and table rows are not covered by the two field
+     classes above, so they get the same treatment globally. */
+  button:focus-visible,
+  input[type="range"]:focus-visible,
+  tr:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
   }
 }
