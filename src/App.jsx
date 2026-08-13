@@ -1,22 +1,21 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './config/api';
 import { buildFeatureColors } from './utils/feature-colors';
-import MiningMap from './components/mining-map';
+import LeafletMap from './components/leaflet-map';
 import MiningControls from './components/mining-controls';
 import JobProgress from './components/job-progress';
 import PatternList from './components/pattern-list';
 import InstanceDetail from './components/instance-detail';
-import DataUpload from './components/DataUpload';
-
-// Plotly is only needed for datasets without lat/lon, and it is by far the
-// heaviest dependency here — loading it on demand keeps the map path light.
-const SpatialMap = lazy(() => import('./components/SpatialMap'));
+import DataUpload from './components/data-upload';
+import ModeToggle from './components/mode-toggle';
+import FeatureRecommendations from './components/feature-recommendations';
+import AreaRecommendations from './components/area-recommendations';
+import { useMiningJob, RARE_MIN_COUNT } from './hooks/use-mining-job';
 
 const DEFAULT_PARAMS = { epsM: 80, minPrev: 0.2, samplePct: 1 };
-const RARE_MIN_COUNT = 30;
-const POLL_MS = 1000;
-
-const isActive = (job) => job && (job.status === 'running' || job.status === 'queued');
+const RUN_MINING_FIRST = 'Chạy mining trước để có khuyến nghị.';
+// Ten regions is what a person can actually compare in one list.
+const AREA_TOP = 10;
 
 export default function App() {
   const [datasets, setDatasets] = useState([]);
@@ -25,11 +24,24 @@ export default function App() {
   const [hasLatLon, setHasLatLon] = useState(true);
 
   const [params, setParams] = useState(DEFAULT_PARAMS);
-  const [job, setJob] = useState(null);
-  const [jobError, setJobError] = useState('');
+  const [instancesLoading, setInstancesLoading] = useState(false);
+  // Loading the dataset is its own failure channel: sharing one state with the
+  // job made a dataset error look like a job error.
+  const [appError, setAppError] = useState('');
 
-  const [result, setResult] = useState(null);
-  const [rarePercentile, setRarePercentile] = useState(25);
+  const {
+    job,
+    jobError,
+    pollError,
+    result,
+    rarePercentile,
+    appliedPercentile,
+    running,
+    run,
+    cancel,
+    changeRarePercentile,
+    reset: resetJob,
+  } = useMiningJob();
 
   const [selectedInstance, setSelectedInstance] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -39,7 +51,16 @@ export default function App() {
 
   const [showUpload, setShowUpload] = useState(false);
 
-  const pollRef = useRef(null);
+  // Investor view. Both panels read a finished result; neither re-runs the miner.
+  const [mode, setMode] = useState('investor');
+  const [recommendations, setRecommendations] = useState(null);
+  const [recommendLoading, setRecommendLoading] = useState(false);
+  const [recommendError, setRecommendError] = useState('');
+  const [areaFeature, setAreaFeature] = useState('');
+  const [regions, setRegions] = useState(null);
+  const [regionsLoading, setRegionsLoading] = useState(false);
+  const [regionsError, setRegionsError] = useState('');
+  const [focusRegion, setFocusRegion] = useState(null);
 
   const colors = useMemo(
     () => buildFeatureColors(instances.map((i) => i.feature)),
@@ -54,101 +75,55 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    loadDatasets().catch((error) => setJobError(error.message));
+    loadDatasets().catch((error) => setAppError(error.message));
   }, [loadDatasets]);
 
   // Switching dataset invalidates everything downstream of it.
   useEffect(() => {
-    if (!datasetId) return;
-    let cancelled = false;
-    setJob(null);
-    setResult(null);
+    if (!datasetId) return undefined;
+    const controller = new AbortController();
+    resetJob();
     setSelectedInstance(null);
     setDetail(null);
     setSelectedPatternIndex(null);
+    setAppError('');
+    setAreaFeature('');
+    setRegions(null);
+    setRecommendations(null);
+    // A region belongs to the dataset it was scored on. Left in place it would
+    // re-frame the new map onto coordinates that mean nothing there.
+    setFocusRegion(null);
+    setInstancesLoading(true);
     api
-      .instances(datasetId)
+      .instances(datasetId, { signal: controller.signal })
       .then((body) => {
-        if (cancelled) return;
         setInstances(body.instances);
         setHasLatLon(body.has_latlon);
+        setInstancesLoading(false);
       })
-      .catch((error) => !cancelled && setJobError(error.message));
-    return () => {
-      cancelled = true;
-    };
-  }, [datasetId]);
-
-  const loadResult = useCallback(
-    async (jobId, percentile) => {
-      const body = await api.result(jobId, {
-        rarePercentile: percentile,
-        rareMinCount: RARE_MIN_COUNT,
+      .catch((error) => {
+        if (error.name === 'AbortError') return;
+        setAppError(error.message);
+        setInstancesLoading(false);
       });
-      setResult(body);
-    },
-    []
-  );
+    return () => controller.abort();
+  }, [datasetId, resetJob]);
 
-  // Poll while a job is in flight; the miner reports stages, not percentages.
-  useEffect(() => {
-    if (!isActive(job)) return undefined;
-    pollRef.current = setInterval(async () => {
-      try {
-        const next = await api.job(job.job_id);
-        setJob(next);
-        if (next.status === 'done') {
-          await loadResult(next.job_id, rarePercentile);
-        }
-      } catch (error) {
-        setJobError(error.message);
-      }
-    }, POLL_MS);
-    return () => clearInterval(pollRef.current);
-  }, [job, rarePercentile, loadResult]);
-
-  const runMining = async () => {
-    setJobError('');
-    setResult(null);
+  const runMining = () => {
     setDetail(null);
     setSelectedPatternIndex(null);
-    try {
-      const created = await api.createJob({
-        dataset_id: datasetId,
-        eps_m: params.epsM,
-        min_prev: params.minPrev,
-        sample_pct: params.samplePct,
-      });
-      setJob(created);
-      if (created.status === 'done') await loadResult(created.job_id, rarePercentile);
-      if (created.status === 'failed') setJobError(created.error);
-    } catch (error) {
-      setJobError(error.message);
-    }
+    return run({
+      dataset_id: datasetId,
+      eps_m: params.epsM,
+      min_prev: params.minPrev,
+      sample_pct: params.samplePct,
+    });
   };
 
-  const cancelMining = async () => {
-    if (!job) return;
-    try {
-      setJob(await api.cancelJob(job.job_id));
-    } catch (error) {
-      setJobError(error.message);
-    }
-  };
-
-  const changeRarePercentile = async (value) => {
-    setRarePercentile(value);
-    if (!job || job.status !== 'done') return;
-    try {
-      await loadResult(job.job_id, value);
-      if (selectedInstance) await loadDetail(selectedInstance, value);
-    } catch (error) {
-      setJobError(error.message);
-    }
-  };
-
+  const detailTokenRef = useRef(0);
   const loadDetail = useCallback(
     async (instance, percentile) => {
+      const token = (detailTokenRef.current += 1);
       setDetailLoading(true);
       setDetailError('');
       try {
@@ -156,13 +131,17 @@ export default function App() {
           rarePercentile: percentile,
           rareMinCount: RARE_MIN_COUNT,
         });
+        // A click or a threshold move that landed while this was in flight owns
+        // the panel now; this answer is about a point the user has left behind.
+        if (token !== detailTokenRef.current) return;
         setDetail(body);
         setSelectedPatternIndex(body.patterns[0]?.pattern_index ?? null);
       } catch (error) {
+        if (token !== detailTokenRef.current) return;
         setDetailError(error.message);
         setDetail(null);
       } finally {
-        setDetailLoading(false);
+        if (token === detailTokenRef.current) setDetailLoading(false);
       }
     },
     [job]
@@ -173,11 +152,92 @@ export default function App() {
       setSelectedInstance(instance);
       setSelectedPatternIndex(null);
       setDetail(null);
-      if (job?.status === 'done') loadDetail(instance, rarePercentile);
+      // Investor view answers the click through its own endpoint, in the effect
+      // below; fetching the pattern detail here too would be a wasted request.
+      if (mode !== 'mining') return;
+      if (job?.status === 'done') loadDetail(instance, appliedPercentile);
       else setDetailError('Run mining first to see which patterns this point is in.');
     },
-    [job, rarePercentile, loadDetail]
+    [job, appliedPercentile, loadDetail, mode]
   );
+
+  // Relabelling the result relabels what the open panel says about one point, so
+  // the detail follows the threshold the result was actually loaded with.
+  const relabelRef = useRef(appliedPercentile);
+  useEffect(() => {
+    if (relabelRef.current === appliedPercentile) return;
+    relabelRef.current = appliedPercentile;
+    if (mode === 'mining' && selectedInstance && job?.status === 'done') {
+      loadDetail(selectedInstance, appliedPercentile);
+    }
+  }, [appliedPercentile, mode, selectedInstance, job, loadDetail]);
+
+  // Investor view: what to build at the clicked point. Guarded on the mode so
+  // neither endpoint is called while the other view is open.
+  useEffect(() => {
+    if (mode !== 'investor' || !selectedInstance) return undefined;
+    if (job?.status !== 'done') {
+      setRecommendations(null);
+      setRecommendError(RUN_MINING_FIRST);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setRecommendLoading(true);
+    setRecommendError('');
+    api
+      .instanceRecommendations(
+        job.job_id,
+        selectedInstance.feature,
+        selectedInstance.number,
+        { rarePercentile: appliedPercentile, rareMinCount: RARE_MIN_COUNT },
+        { signal: controller.signal }
+      )
+      .then((body) => {
+        setRecommendations(body.recommendations);
+        setRecommendLoading(false);
+      })
+      .catch((error) => {
+        if (error.name === 'AbortError') return;
+        setRecommendError(error.message);
+        setRecommendations(null);
+        setRecommendLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [mode, selectedInstance, job, appliedPercentile]);
+
+  // Investor view: where one feature belongs.
+  useEffect(() => {
+    setFocusRegion(null);
+    if (mode !== 'investor' || !areaFeature) {
+      setRegions(null);
+      return undefined;
+    }
+    if (job?.status !== 'done') {
+      setRegions(null);
+      setRegionsError(RUN_MINING_FIRST);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setRegionsLoading(true);
+    setRegionsError('');
+    api
+      .siteRecommendations(job.job_id, areaFeature, AREA_TOP, { signal: controller.signal })
+      .then((body) => {
+        setRegions(body.regions);
+        setRegionsLoading(false);
+      })
+      .catch((error) => {
+        if (error.name === 'AbortError') return;
+        setRegionsError(error.message);
+        setRegions(null);
+        setRegionsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [mode, areaFeature, job]);
 
   // The map binds a click handler to every marker, so that handler has to keep
   // the same identity across renders: while a job polls, `job` changes once a
@@ -186,6 +246,16 @@ export default function App() {
   const selectInstanceRef = useRef(selectInstance);
   selectInstanceRef.current = selectInstance;
   const handleSelect = useCallback((instance) => selectInstanceRef.current(instance), []);
+
+  // Each view answers a click through its own endpoint, and neither is called
+  // while the other is open. Arriving in Mining view with a point already picked
+  // in Investor view is the one case where the answer has to be fetched late.
+  const changeMode = (next) => {
+    setMode(next);
+    if (next === 'mining' && selectedInstance && !detail && job?.status === 'done') {
+      loadDetail(selectedInstance, appliedPercentile);
+    }
+  };
 
   const clearSelection = () => {
     setSelectedInstance(null);
@@ -201,6 +271,14 @@ export default function App() {
   }, [detail, selectedPatternIndex]);
 
   const activeDataset = datasets.find((d) => d.id === datasetId);
+
+  // The picker offers whatever the result reports, falling back to the dataset so
+  // a feature can be chosen before the first run.
+  const featureNames = useMemo(
+    () => Object.keys(result?.feature_counts ?? activeDataset?.feature_counts ?? {}).sort(),
+    [result, activeDataset]
+  );
+
   const mapProps = {
     instances,
     colors,
@@ -208,6 +286,12 @@ export default function App() {
     neighbors: highlightedNeighbors,
     radiusM: job?.params?.eps_m ?? null,
     onSelect: handleSelect,
+    // Datasets without lat/lon have nothing to put a street map under, so they
+    // are drawn in their own metres on a flat CRS.
+    crs: hasLatLon ? 'latlon' : 'xy',
+    regions: mode === 'investor' ? regions : null,
+    onRegionSelect: setFocusRegion,
+    focusRegion,
   };
 
   return (
@@ -222,6 +306,7 @@ export default function App() {
           </p>
         </div>
         <div className="flex items-center gap-4 text-xs text-slate-400">
+          <ModeToggle mode={mode} onChange={changeMode} />
           {activeDataset && (
             <span>
               {activeDataset.instance_count.toLocaleString()} instances ·{' '}
@@ -234,8 +319,19 @@ export default function App() {
         </div>
       </header>
 
-      <main className="grid min-h-0 flex-1 grid-cols-12 gap-4 p-4">
-        <aside className="col-span-12 flex min-h-0 flex-col gap-4 overflow-auto lg:col-span-3">
+      {appError && (
+        <div className="border-b border-red-500/40 bg-red-500/10 px-6 py-2 text-sm text-red-300">
+          {appError}
+        </div>
+      )}
+
+      {/* Desktop is the target: below `lg` the three panels stack into auto-height
+          grid rows, where a card's `h-full` resolves against nothing and the map
+          collapses to zero. So below `lg` the page scrolls and the panels carry
+          explicit heights; from `lg` up the grid owns the viewport and each card
+          scrolls inside its own frame. */}
+      <main className="grid flex-1 grid-cols-12 gap-4 overflow-auto p-4 lg:min-h-0 lg:overflow-hidden">
+        <aside className="col-span-12 flex min-h-[320px] flex-col gap-4 lg:col-span-3 lg:min-h-0 lg:overflow-auto">
           <MiningControls
             datasets={datasets}
             datasetId={datasetId}
@@ -243,11 +339,11 @@ export default function App() {
             params={params}
             onParamsChange={setParams}
             onRun={runMining}
-            onCancel={cancelMining}
-            running={isActive(job)}
+            onCancel={cancel}
+            running={running}
             disabled={!datasetId}
           />
-          <JobProgress job={job} error={jobError} />
+          <JobProgress job={job} error={jobError || pollError} />
           {showUpload && (
             <DataUpload
               onUploaded={async (dataset) => {
@@ -259,44 +355,80 @@ export default function App() {
           )}
         </aside>
 
-        <section className="col-span-12 min-h-0 lg:col-span-5">
-          <div className="card h-full overflow-hidden p-1">
-            {hasLatLon ? (
-              <MiningMap {...mapProps} />
-            ) : (
-              <Suspense
-                fallback={<div className="p-4 text-sm text-slate-400">Loading plot…</div>}
-              >
-                <SpatialMap {...mapProps} />
-              </Suspense>
+        <section className="col-span-12 h-[60vh] min-h-[360px] lg:col-span-5 lg:h-auto lg:min-h-0">
+          <div className="relative card h-full overflow-hidden p-1">
+            <LeafletMap {...mapProps} />
+            {/* Ten to seventeen thousand points take a moment to arrive. Without
+                this the map is simply blank, which reads as an empty dataset. */}
+            {instancesLoading && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-slate-900/70 text-sm text-slate-300">
+                Đang nạp điểm dữ liệu…
+              </div>
             )}
           </div>
         </section>
 
-        <aside className="col-span-12 flex min-h-0 flex-col gap-4 lg:col-span-4">
-          <div className="min-h-0 flex-1">
-            <InstanceDetail
-              instance={selectedInstance}
-              detail={detail}
-              loading={detailLoading}
-              error={detailError}
-              rareFeatures={result?.rare_features ?? []}
-              colors={colors}
-              selectedIndex={selectedPatternIndex}
-              onSelectPattern={(pattern) => setSelectedPatternIndex(pattern.pattern_index)}
-              onClear={clearSelection}
-            />
-          </div>
-          <div className="min-h-0 flex-1">
-            <PatternList
-              result={result}
-              colors={colors}
-              rarePercentile={rarePercentile}
-              onRarePercentileChange={changeRarePercentile}
-              selectedIndex={selectedPatternIndex}
-              onSelect={(pattern) => setSelectedPatternIndex(pattern.pattern_index)}
-            />
-          </div>
+        <aside className="col-span-12 flex min-h-[640px] flex-col gap-4 lg:col-span-4 lg:min-h-0">
+          {mode === 'investor' ? (
+            <>
+              {/* Say plainly what these numbers are. They rank co-location support
+                  in patterns the miner found; they are not a forecast of trade. */}
+              <p className="rounded border border-slate-700 bg-slate-800/60 px-3 py-2 text-xs text-slate-400">
+                Khuyến nghị dựa trên pattern co-location đã khai phá từ dữ liệu này — không
+                phải dự báo kết quả kinh doanh. Mở <span className="text-slate-200">Lý do</span>{' '}
+                ở mỗi dòng để xem pattern nào tạo ra điểm số.
+              </p>
+              <div className="min-h-0 flex-1">
+                <FeatureRecommendations
+                  instance={selectedInstance}
+                  recommendations={recommendations}
+                  loading={recommendLoading}
+                  error={recommendError}
+                  rareFeatures={result?.rare_features ?? []}
+                  colors={colors}
+                />
+              </div>
+              <div className="min-h-0 flex-1">
+                <AreaRecommendations
+                  features={featureNames}
+                  feature={areaFeature}
+                  onFeatureChange={setAreaFeature}
+                  regions={regions}
+                  loading={regionsLoading}
+                  error={regionsError}
+                  onFocusRegion={setFocusRegion}
+                  rareFeatures={result?.rare_features ?? []}
+                  colors={colors}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="min-h-0 flex-1">
+                <InstanceDetail
+                  instance={selectedInstance}
+                  detail={detail}
+                  loading={detailLoading}
+                  error={detailError}
+                  rareFeatures={result?.rare_features ?? []}
+                  colors={colors}
+                  selectedIndex={selectedPatternIndex}
+                  onSelectPattern={(pattern) => setSelectedPatternIndex(pattern.pattern_index)}
+                  onClear={clearSelection}
+                />
+              </div>
+              <div className="min-h-0 flex-1">
+                <PatternList
+                  result={result}
+                  colors={colors}
+                  rarePercentile={rarePercentile}
+                  onRarePercentileChange={changeRarePercentile}
+                  selectedIndex={selectedPatternIndex}
+                  onSelect={(pattern) => setSelectedPatternIndex(pattern.pattern_index)}
+                />
+              </div>
+            </>
+          )}
         </aside>
       </main>
     </div>

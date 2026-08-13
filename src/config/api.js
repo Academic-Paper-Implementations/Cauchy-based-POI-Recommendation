@@ -4,6 +4,9 @@
 // the API from the same origin. Override only for a cross-origin backend.
 export const API_BASE = import.meta.env.VITE_API_BASE || '';
 
+// Every read below accepts an options bag so callers can pass an AbortSignal:
+// dragging a slider or switching dataset should stop the work it just made
+// pointless, not merely ignore the answer when it arrives.
 async function request(path, options) {
   const res = await fetch(`${API_BASE}${path}`, options);
   if (!res.ok) {
@@ -30,7 +33,8 @@ export const api = {
 
   datasets: () => request('/api/datasets'),
 
-  instances: (datasetId) => request(`/api/datasets/${encodeURIComponent(datasetId)}/instances`),
+  instances: (datasetId, options) =>
+    request(`/api/datasets/${encodeURIComponent(datasetId)}/instances`, options),
 
   createJob: (body) =>
     request('/api/jobs', {
@@ -45,20 +49,38 @@ export const api = {
 
   // Rare labelling is applied here, at read time — moving the threshold costs
   // one request and never re-runs the miner.
-  result: (jobId, { rarePercentile, rareMinCount }) =>
+  result: (jobId, { rarePercentile, rareMinCount }, options) =>
     request(
       `/api/jobs/${jobId}/result?${query({
         rare_percentile: rarePercentile,
         rare_min_count: rareMinCount,
-      })}`
+      })}`,
+      options
     ),
 
-  instancePatterns: (jobId, feature, number, { rarePercentile, rareMinCount }) =>
+  instancePatterns: (jobId, feature, number, { rarePercentile, rareMinCount }, options) =>
     request(
       `/api/jobs/${jobId}/instances/${encodeURIComponent(feature)}/${number}?${query({
         rare_percentile: rarePercentile,
         rare_min_count: rareMinCount,
-      })}`
+      })}`,
+      options
+    ),
+
+  // Which features are worth adding at one point, and where one feature belongs.
+  // Both are derived from a finished result — neither re-runs the miner.
+  instanceRecommendations: (jobId, feature, number, { rarePercentile, rareMinCount }, options) =>
+    request(
+      `/api/jobs/${jobId}/instances/${encodeURIComponent(feature)}/${number}/recommendations?${query(
+        { rare_percentile: rarePercentile, rare_min_count: rareMinCount }
+      )}`,
+      options
+    ),
+
+  siteRecommendations: (jobId, feature, top, options) =>
+    request(
+      `/api/jobs/${jobId}/site-recommendations?${query({ feature, top })}`,
+      options
     ),
 
   uploadDataset: (formData) =>
