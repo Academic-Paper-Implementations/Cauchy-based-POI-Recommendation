@@ -96,7 +96,11 @@ export default function DataUpload({ onUploaded }) {
     <div className="card space-y-3 p-4">
       <h2 className="text-lg font-semibold text-primary-400">Upload a CSV</h2>
 
+      <label htmlFor="upload-file" className="block text-xs text-slate-400">
+        CSV file
+      </label>
       <input
+        id="upload-file"
         type="file"
         accept=".csv"
         onChange={handleFile}
@@ -134,11 +138,12 @@ export default function DataUpload({ onUploaded }) {
         <div className="grid grid-cols-2 gap-2">
           {FIELDS.map((field) => (
             <div key={field.key}>
-              <label className="mb-1 block text-xs text-slate-400">
+              <label htmlFor={`upload-${field.key}`} className="mb-1 block text-xs text-slate-400">
                 {field.label}
                 {field.required && <span className="text-red-400"> *</span>}
               </label>
               <select
+                id={`upload-${field.key}`}
                 className="select-field w-full text-xs"
                 value={mapping[field.key]}
                 onChange={(event) =>

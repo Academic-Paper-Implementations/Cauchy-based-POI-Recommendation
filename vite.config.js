@@ -6,6 +6,14 @@ import react from '@vitejs/plugin-react'
 // same-origin relative URLs in both development and production.
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setup.js',
+    // Leaflet needs a real layout engine; the map is verified in a browser, not
+    // here. Everything else in src/ is fair game.
+    exclude: ['node_modules/**', 'dist/**', 'server/**', '.venv/**'],
+  },
   server: {
     proxy: {
       '/api': {

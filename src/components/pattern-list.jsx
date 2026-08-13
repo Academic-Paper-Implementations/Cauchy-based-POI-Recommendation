@@ -8,8 +8,9 @@ import { featureColor } from '../utils/feature-colors';
 
 const PAGE_SIZE = 50;
 
-export function PatternFeatures({ pattern, rareFeatures, colors }) {
-  const rare = new Set(rareFeatures);
+// `rare` is a Set built once by the caller: this renders on every row of a
+// thousand-row table, and rebuilding the set per row was the whole cost.
+export function PatternFeatures({ pattern, rare, colors }) {
   return (
     <div className="flex flex-wrap gap-x-3 gap-y-1">
       {pattern.features.map((feature) => (
@@ -28,7 +29,10 @@ export function PatternFeatures({ pattern, rareFeatures, colors }) {
 }
 
 export function PatternWpi({ pattern }) {
-  if (pattern.deduced && pattern.wpi === null) {
+  // A missing WPI is the only thing that decides how this renders. The engine
+  // never emits one without `deduced`, so requiring both added an assumption
+  // without adding safety.
+  if (pattern.wpi === null) {
     return (
       <span
         className="text-xs text-amber-300"
@@ -49,7 +53,15 @@ export default function PatternList({
   selectedIndex,
   onSelect,
 }) {
-  const [page, setPage] = useState(0);
+  // The page number belongs to the result it was turned on. A new result is a new
+  // list, and carrying the number over would drop the user into the middle of it
+  // with no idea why — so the page is stored with its result and starts over
+  // whenever that changes.
+  const [paging, setPaging] = useState({ result: null, page: 0 });
+  const page = paging.result === result ? paging.page : 0;
+  const setPage = (next) => setPaging({ result, page: next });
+
+  const rare = useMemo(() => new Set(result?.rare_features ?? []), [result]);
 
   // Highest WPI first; patterns with no computed WPI sort to the end.
   const ordered = useMemo(() => {
@@ -64,7 +76,7 @@ export default function PatternList({
 
   if (!result) {
     return (
-      <div className="card p-4 text-sm text-slate-400">
+      <div className="card h-full p-4 text-sm text-slate-400">
         Run mining to see prevalent patterns.
       </div>
     );
@@ -75,7 +87,10 @@ export default function PatternList({
   const rows = ordered.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
 
   return (
-    <div className="card flex min-h-0 flex-col p-4">
+    // `h-full` is what makes the table below scroll: the wrapper in App has a
+    // definite height, but without it the card grows to its content and the
+    // inner `overflow-auto` never has a bounded parent to scroll inside.
+    <div className="card flex h-full min-h-0 flex-col p-4">
       <div className="mb-3 flex items-baseline justify-between">
         <h2 className="text-lg font-semibold text-primary-400">
           {result.pattern_count.toLocaleString()} prevalent patterns
@@ -84,12 +99,13 @@ export default function PatternList({
       </div>
 
       <div className="mb-3">
-        <label className="mb-1 block text-xs text-slate-400">
+        <label htmlFor="rare-threshold" className="mb-1 block text-xs text-slate-400">
           Rare threshold: {rarePercentile}th percentile → ≤{' '}
           {result.rare_threshold.toLocaleString()} instances ({result.rare_features.length}{' '}
           features)
         </label>
         <input
+          id="rare-threshold"
           type="range"
           min="0"
           max="100"
@@ -116,7 +132,14 @@ export default function PatternList({
             {rows.map((pattern) => (
               <tr
                 key={pattern.pattern_index}
+                tabIndex={0}
+                aria-selected={pattern.pattern_index === selectedIndex}
                 onClick={() => onSelect(pattern)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  event.preventDefault();
+                  onSelect(pattern);
+                }}
                 className={`cursor-pointer border-t border-slate-700/60 hover:bg-slate-700/40 ${
                   pattern.pattern_index === selectedIndex ? 'bg-slate-700/60' : ''
                 }`}
@@ -128,11 +151,7 @@ export default function PatternList({
                   <PatternWpi pattern={pattern} />
                 </td>
                 <td className="px-2 py-2">
-                  <PatternFeatures
-                    pattern={pattern}
-                    rareFeatures={result.rare_features}
-                    colors={colors}
-                  />
+                  <PatternFeatures pattern={pattern} rare={rare} colors={colors} />
                 </td>
               </tr>
             ))}

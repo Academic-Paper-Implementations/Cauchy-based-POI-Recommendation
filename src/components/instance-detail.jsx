@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { PatternFeatures, PatternWpi } from './pattern-list';
 
 // What a clicked point takes part in. Selecting one of its patterns highlights
@@ -16,16 +17,19 @@ export default function InstanceDetail({
   onSelectPattern,
   onClear,
 }) {
+  const rare = useMemo(() => new Set(rareFeatures), [rareFeatures]);
+
   if (!instance) {
     return (
-      <div className="card p-4 text-sm text-slate-400">
+      <div className="card h-full p-4 text-sm text-slate-400">
         Click a point on the map to see the patterns it participates in.
       </div>
     );
   }
 
   return (
-    <div className="card flex min-h-0 flex-col p-4">
+    // See pattern-list.jsx: `h-full` bounds the card so the list below scrolls.
+    <div className="card flex h-full min-h-0 flex-col p-4">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <h2 className="text-lg font-semibold text-primary-400">
@@ -63,11 +67,7 @@ export default function InstanceDetail({
                   <span className="text-xs text-slate-500">size {pattern.size}</span>
                   <PatternWpi pattern={pattern} />
                 </div>
-                <PatternFeatures
-                  pattern={pattern}
-                  rareFeatures={rareFeatures}
-                  colors={colors}
-                />
+                <PatternFeatures pattern={pattern} rare={rare} colors={colors} />
                 <p className="mt-1 text-xs text-slate-500">
                   {pattern.neighbors.length} co-participating neighbour
                   {pattern.neighbors.length === 1 ? '' : 's'} nearby

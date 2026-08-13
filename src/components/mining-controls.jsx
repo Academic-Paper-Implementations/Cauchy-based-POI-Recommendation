@@ -20,8 +20,11 @@ export default function MiningControls({
   return (
     <div className="card space-y-4 p-4">
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-300">Dataset</label>
+        <label htmlFor="dataset" className="mb-1 block text-sm font-medium text-slate-300">
+          Dataset
+        </label>
         <select
+          id="dataset"
           className="select-field w-full"
           value={datasetId}
           onChange={(event) => onDatasetChange(event.target.value)}
@@ -37,10 +40,11 @@ export default function MiningControls({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-300">
+          <label htmlFor="eps-m" className="mb-1 block text-sm font-medium text-slate-300">
             Neighbour distance ε (m)
           </label>
           <input
+            id="eps-m"
             type="number"
             min="1"
             step="10"
@@ -51,10 +55,11 @@ export default function MiningControls({
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-300">
+          <label htmlFor="min-prev" className="mb-1 block text-sm font-medium text-slate-300">
             Min prevalence
           </label>
           <input
+            id="min-prev"
             type="number"
             min="0"
             max="1"
@@ -68,10 +73,11 @@ export default function MiningControls({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-300">
+        <label htmlFor="sample-pct" className="mb-1 block text-sm font-medium text-slate-300">
           Instances per feature: {Math.round(params.samplePct * 100)}%
         </label>
         <input
+          id="sample-pct"
           type="range"
           min="0.1"
           max="1"
