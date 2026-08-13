@@ -6,7 +6,13 @@ import math
 
 import pytest
 
-from server.upload import MAX_INSTANCES, UploadError, parse_upload, project_local
+from server.upload import (
+    MAX_FEATURES,
+    MAX_INSTANCES,
+    UploadError,
+    parse_upload,
+    project_local,
+)
 
 HEADER = "biz,kind,lat,lon\n"
 ROWS = "b-1,Cafe,39.9500,-75.1600\nb-2,Bar,39.9550,-75.1650\n"
@@ -97,6 +103,21 @@ def test_too_many_instances_are_rejected():
     body = "".join(f"b-{i},Cafe,39.95,-75.16\n" for i in range(MAX_INSTANCES + 2))
     with pytest.raises(UploadError, match="not practical"):
         parse_upload((HEADER + body).encode("utf-8"), **LATLON_MAPPING)
+
+
+def _rows_with_features(count: int) -> bytes:
+    body = "".join(f"b-{i},kind-{i},39.95,-75.16\n" for i in range(count))
+    return (HEADER + body).encode("utf-8")
+
+
+def test_too_many_distinct_features_are_rejected():
+    with pytest.raises(UploadError, match="clique enumeration"):
+        parse_upload(_rows_with_features(MAX_FEATURES + 1), **LATLON_MAPPING)
+
+
+def test_exactly_the_feature_limit_is_accepted():
+    rows = parse_upload(_rows_with_features(MAX_FEATURES), **LATLON_MAPPING)
+    assert len({row["feature"] for row in rows}) == MAX_FEATURES
 
 
 def test_rows_without_a_feature_are_skipped():

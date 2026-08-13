@@ -35,6 +35,14 @@ from .pattern_query import (
     query_instance,
 )
 from .rare_labeling import DEFAULT_MIN_COUNT, DEFAULT_PERCENTILE, label_rare
+from .recommendation import (
+    CellPresence,
+    FeatureBits,
+    LatLonFrame,
+    TooManyFeatures,
+    recommend_areas,
+    recommend_for_point,
+)
 from .upload import UploadError, parse_upload, store_upload
 
 ROOT = Path(__file__).resolve().parents[1]  # spatial_web/
@@ -60,6 +68,12 @@ RUNNER = JobRunner()
 # per result and not per request.
 _INDEX_CACHE: dict[str, PatternIndex] = {}
 _GRID_CACHE: dict[tuple[str, float], SpatialGrid] = {}
+# Recommendation inputs. Presence cells and the bit assignment describe the
+# dataset, not the mining run, so they outlive any single result; scored regions
+# depend on the result and are keyed by it.
+_PRESENCE_CACHE: dict[tuple[str, float], CellPresence] = {}
+_BITS_CACHE: dict[str, FeatureBits] = {}
+_AREA_CACHE: dict[tuple[str, str, int], dict] = {}
 
 
 class JobRequest(BaseModel):
@@ -104,6 +118,25 @@ def _grid_for(dataset, eps_m: float) -> SpatialGrid:
     if key not in _GRID_CACHE:
         _GRID_CACHE[key] = SpatialGrid(dataset.instances, eps_m)
     return _GRID_CACHE[key]
+
+
+def _bits_for(dataset) -> FeatureBits:
+    """Bit positions for the dataset's features, shared by both recommendations."""
+    if dataset.info.id not in _BITS_CACHE:
+        try:
+            _BITS_CACHE[dataset.info.id] = FeatureBits(dataset.feature_counts)
+        except TooManyFeatures as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+    return _BITS_CACHE[dataset.info.id]
+
+
+def _presence_for(dataset, eps_m: float) -> CellPresence:
+    key = (dataset.info.id, eps_m)
+    if key not in _PRESENCE_CACHE:
+        _PRESENCE_CACHE[key] = CellPresence.build(
+            dataset.instances, eps_m, _bits_for(dataset)
+        )
+    return _PRESENCE_CACHE[key]
 
 
 @app.get("/api/health")
@@ -232,6 +265,59 @@ def instance_patterns(
         raise HTTPException(status_code=404, detail=f"unknown instance {feature}{number}")
 
 
+@app.get("/api/jobs/{job_id}/instances/{feature}/{number}/recommendations")
+def instance_recommendations(
+    job_id: str,
+    feature: str,
+    number: int,
+    rare_percentile: float = Query(DEFAULT_PERCENTILE, ge=0, le=100),
+    rare_min_count: int = Query(DEFAULT_MIN_COUNT, ge=0),
+) -> dict:
+    """Which features are worth adding at this point, and which patterns say so."""
+    result, job = _result_of(job_id)
+    dataset = _dataset(job.params.dataset_id)
+    rare, _ = label_rare(result.get("feature_counts", {}), rare_percentile, rare_min_count)
+
+    try:
+        return recommend_for_point(
+            dataset=dataset,
+            patterns=result.get("patterns", []),
+            grid=_grid_for(dataset, job.params.eps_m),
+            bits=_bits_for(dataset),
+            feature=feature,
+            number=number,
+            eps_m=job.params.eps_m,
+            min_prev=job.params.min_prev,
+            rare=rare,
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown instance {feature}{number}")
+
+
+@app.get("/api/jobs/{job_id}/site-recommendations")
+def site_recommendations(
+    job_id: str,
+    feature: str = Query(..., min_length=1),
+    top: int = Query(10, ge=1, le=100),
+) -> dict:
+    """Where to put one feature: contiguous regions ranked by their peak cell."""
+    result, job = _result_of(job_id)
+    dataset = _dataset(job.params.dataset_id)
+
+    key = (job.result_key, feature, top)
+    if key not in _AREA_CACHE:
+        _AREA_CACHE[key] = recommend_areas(
+            presence=_presence_for(dataset, job.params.eps_m),
+            patterns=result.get("patterns", []),
+            bits=_bits_for(dataset),
+            feature=feature,
+            min_prev=job.params.min_prev,
+            top=top,
+            frame=LatLonFrame.of(dataset),
+        )
+    return {"job_id": job_id, "eps_m": job.params.eps_m, **_AREA_CACHE[key]}
+
+
 @app.post("/api/uploads")
 async def upload_dataset(
     file: UploadFile = File(...),
@@ -270,7 +356,10 @@ async def upload_dataset(
 def clear_cache() -> dict:
     """Drop every cached mining result. The next run mines again."""
     removed = RUNNER.clear_cache()
+    # Only the views derived from a *result* are invalidated here. The grid and
+    # the presence cells describe the dataset itself and stay valid.
     _INDEX_CACHE.clear()
+    _AREA_CACHE.clear()
     return {"removed": removed}
 
 

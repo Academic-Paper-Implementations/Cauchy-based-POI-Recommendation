@@ -29,6 +29,11 @@ UPLOAD_DIR = RUNTIME / "uploads"
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 MAX_INSTANCES = 50_000
+# The miner enumerates cliques over the feature set, and that enumeration grows
+# combinatorially with the number of distinct features — a wide file does not run
+# slowly, it does not finish. Rejecting it here is kinder than accepting an upload
+# nobody can mine.
+MAX_FEATURES = 64
 EARTH_RADIUS_M = 6_371_008.8
 
 
@@ -116,6 +121,7 @@ def parse_upload(
 
     rows: list[dict] = []
     degrees: list[tuple[float, float]] = []
+    seen_features: set[str] = set()
 
     for record in reader:
         feature = _column(record, feature_column)
@@ -135,6 +141,15 @@ def parse_upload(
         y = _to_float(_column(record, y_column)) if has_xy else None
         if has_xy and (x is None or y is None):
             continue
+
+        seen_features.add(feature)
+        if len(seen_features) > MAX_FEATURES:
+            raise UploadError(
+                f"more than {MAX_FEATURES} distinct features in {feature_column!r}; "
+                "clique enumeration grows combinatorially with the feature count, so "
+                "a file this wide cannot be mined. Check that the column holds "
+                "categories rather than names or ids."
+            )
 
         rows.append(
             {

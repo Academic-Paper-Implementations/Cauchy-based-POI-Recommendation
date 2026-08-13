@@ -22,6 +22,9 @@ def client(tmp_path, monkeypatch, fake_miner, tiny_dataset):
     main.REGISTRY.register(tiny_dataset.info)
     main._INDEX_CACHE.clear()
     main._GRID_CACHE.clear()
+    main._PRESENCE_CACHE.clear()
+    main._BITS_CACHE.clear()
+    main._AREA_CACHE.clear()
 
     with TestClient(main.app) as test_client:
         yield test_client
@@ -144,6 +147,69 @@ def test_cache_can_be_cleared(client, tmp_path):
     assert len(invocation_log(tmp_path)) == 2
 
 
-def test_no_poi_recommendation_endpoints_remain(client):
+def test_no_poi_business_recommender_endpoints_remain(client):
+    """This app recommends *sites* from mined co-location, never businesses to users.
+
+    The sibling POI recommender's surface must stay out. What separates the two is
+    that everything recommended here is derived from a finished mining job, so a
+    recommendation route that does not hang off a job is the old kind coming back.
+    """
     paths = {route.path for route in main.app.routes}
-    assert not any("recommend" in path or "businesses" in path for path in paths)
+    assert not any("businesses" in path or "users" in path for path in paths)
+    assert all(
+        path.startswith("/api/jobs/{job_id}/") for path in paths if "recommendation" in path
+    )
+
+
+def test_point_recommendations_rank_features_by_their_co_location_support(client):
+    job_id = run_to_completion(client)
+    body = client.get(f"/api/jobs/{job_id}/instances/Cafe/1/recommendations").json()
+
+    # The only pattern is {Bar, Cafe}, and this Cafe has a Bar 50 m away.
+    bar = body["recommendations"][0]
+    assert bar["feature"] == "Bar"
+    assert bar["score"] == 0.5
+    assert (bar["ready_count"], bar["total_count"]) == (1, 1)
+    assert bar["existing_nearby"] == 1
+    assert bar["supporting_patterns"][0]["features"] == ["Bar", "Cafe"]
+
+
+def test_point_recommendations_reject_an_unknown_point(client):
+    job_id = run_to_completion(client)
+    assert (
+        client.get(f"/api/jobs/{job_id}/instances/Cafe/99/recommendations").status_code == 404
+    )
+
+
+def test_site_recommendations_return_regions_with_saturation(client):
+    job_id = run_to_completion(client)
+    body = client.get(f"/api/jobs/{job_id}/site-recommendations?feature=Bar").json()
+
+    # Two Cafes sit ~7 km apart, so each anchors its own region; only the one
+    # beside b-2 already has a Bar in it.
+    assert body["region_count"] == 2
+    assert {r["saturation"] for r in body["regions"]} == {0, 1}
+    assert all(r["peak_score"] == 0.5 for r in body["regions"])
+    assert body["eps_m"] == 120.0
+
+
+def test_site_recommendations_are_cached_per_result_and_feature(client):
+    job_id = run_to_completion(client)
+    first = client.get(f"/api/jobs/{job_id}/site-recommendations?feature=Bar").json()
+    second = client.get(f"/api/jobs/{job_id}/site-recommendations?feature=Bar").json()
+
+    assert first == second
+    assert (main.RUNNER.job(job_id).result_key, "Bar", 10) in main._AREA_CACHE
+
+
+def test_site_recommendations_of_an_unfinished_job_are_a_conflict(client, monkeypatch):
+    from server.tests.test_mining_job import extra_config_keys
+
+    extra_config_keys(monkeypatch, hold_seconds=20)
+    job_id = client.post(
+        "/api/jobs",
+        json={"dataset_id": "tiny", "eps_m": 900.0, "min_prev": 0.2, "sample_pct": 1.0},
+    ).json()["job_id"]
+
+    assert client.get(f"/api/jobs/{job_id}/site-recommendations?feature=Bar").status_code == 409
+    client.delete(f"/api/jobs/{job_id}")
