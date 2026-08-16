@@ -9,6 +9,30 @@ dependencies: [3]
 
 # Phase 4: Frontend — separate, clean Explorer app
 
+> **Design correction (2026-08-16, kongming-advised) — read before building.**
+> - **Click-POI source = `query_instance`**: `GET /api/jobs/{job_id}/instances/{feature}/{number}`
+>   returns `patterns[]` (grouped by feature-list), each with `neighbors[]` = co-located POIs
+>   carrying `distance_m`, `name`, `stars`, `review_count`, `attributes` (Phase 3). Render the
+>   grouped clusters + member POIs from THIS, not from `instance_recommendations` (that endpoint
+>   is feature-level "what to add", wrong for discovery).
+> - **ε cap = 100 m (hard):** co-located `neighbors[]` can never be farther than the mining ε
+>   (locked 100 m). The **discovery-radius slider has two distinct roles**: (a) filter which POI
+>   pins from `/api/datasets/{city}/instances` are drawn/kept (any radius — this is the "what's
+>   around here" density control); (b) it can only NARROW the co-location grouping within 100 m,
+>   never extend it. **Clamp the slider max to ~ε (100 m) for the grouping view, OR keep a wider
+>   pin-display radius but label honestly** — call it a "co-location radius", never a promise that
+>   grouped clusters extend to the full circle. Legend: "clusters are defined at {ε} m." Do NOT
+>   widen the backend neighbour search past ε to fake reach (would falsely claim co-location for
+>   city-wide pattern-mates).
+> - **Kickoff decisions (kongming go/no-go):** (1) DEFAULT to **option A — clamp the slider max
+>   to the job's ε** for the grouping view (safest for the committee demo: a wide circle with a
+>   near-empty cluster list reads as "found nothing" in the exact moment discovery must sell).
+>   Revisit widening (option B) only if user testing wants raw POI density beyond ε.
+>   (2) The legend must read the **actual job `eps_m`** from the job/result response, never a
+>   hardcoded 100. (3) After ANY edit to a source `spatial_instances.csv`, re-run
+>   `pytest server/tests -k datasets` — the shared `CUISINE_ATTRIBUTES` existence check will
+>   fail registration loudly if a column drifts, but only if the tests are run.
+
 ## Overview
 Build a **separate, clean end-user Explorer frontend** (new folder/package) that reuses the
 existing backend + engine. The user picks a city, runs a mine through the **standard job
@@ -30,7 +54,7 @@ Mining spatial_web frontend is **not touched**.
 ## Architecture
 - **Separate app**: a new frontend folder (e.g. `explorer/` as its own Vite package, or a
   clean `src/explorer/` entry with its own build target). It talks to the SAME backend
-  (`/api/datasets`, `/api/jobs`, `instance_recommendations`). Decide package-vs-entry at
+  (`/api/datasets`, `/api/jobs`, `/api/jobs/{job}/instances/{feature}/{number}`). Decide package-vs-entry at
   phase start; default to a self-contained folder so it deploys independently and shares
   nothing structural with the research UI.
 - **Reused low-level utilities (clean copy/share, not the old components)**: the map/CRS
@@ -41,7 +65,8 @@ Mining spatial_web frontend is **not touched**.
 - **Mining controls (kept, clean UI)**: a minimal dataset picker + ε + threshold form that
   POSTs the standard `/api/jobs` and polls `/api/jobs/{id}` — same contract the research UI
   uses, re-implemented cleanly. Each mine reflects the user's parameters.
-- **Click-POI discovery**: on a finished job, clicking a POI calls `instance_recommendations`
+- **Click-POI discovery**: on a finished job, clicking a POI calls `query_instance`
+  (`GET /api/jobs/{job}/instances/{feature}/{number}`) → `patterns[].neighbors[]`
   (via a fresh clean `api.js`), which returns co-located neighbours + supporting pattern +
   per-neighbour distance/rating/attributes (Phase 3). Group neighbours by their supporting
   pattern's feature list.
@@ -71,7 +96,7 @@ Mining spatial_web frontend is **not touched**.
    poll to completion (standard flow).
 3. Explorer map (latlon CRS): load `/api/datasets/{city}/instances`, render food/leisure POI
    pins; select a POI on click.
-4. On POI click → `instance_recommendations`; render `cluster-group-list` (feature-list
+4. On POI click → `query_instance`; render `cluster-group-list` (feature-list
    labels) + map highlight of neighbours; ungrouped nearby dimmed so the map is never blank.
 5. `discovery-radius-control` slider → client-side filter of displayed neighbours/POIs +
    radius circle overlay; never touches job params.

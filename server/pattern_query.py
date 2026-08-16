@@ -141,7 +141,7 @@ def query_instance(
 
 
 def _point(inst: dict) -> dict:
-    return {
+    point = {
         "feature": inst["feature"],
         "number": inst["number"],
         "id": inst["id"],
@@ -150,3 +150,9 @@ def _point(inst: dict) -> dict:
         "x": inst["x"],
         "y": inst["y"],
     }
+    # Display fields for the explorer popup, present only on datasets that carry
+    # them (cuisine datasets); absent keys keep existing datasets' shape intact.
+    for key in ("name", "stars", "review_count", "attributes"):
+        if key in inst:
+            point[key] = inst[key]
+    return point

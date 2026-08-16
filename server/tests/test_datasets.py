@@ -79,6 +79,42 @@ def test_latlon_is_optional(info, monkeypatch, tmp_path, source_csv):
     assert dataset.instances[0]["id"] == "Cafe1"
 
 
+def test_display_fields_are_absent_unless_mapped(info, monkeypatch, tmp_path):
+    """A dataset that maps no display columns keeps its exact record shape."""
+    monkeypatch.setattr("server.datasets.PREPARED_DIR", tmp_path / "prepared")
+    record = prepare(info).instances[0]
+    assert set(record) == {"feature", "number", "x", "y", "lat", "lon", "id"}
+
+
+def test_display_fields_are_carried_and_typed_when_mapped(monkeypatch, tmp_path):
+    """name/stars/review_count are typed; the attributes bag keeps raw strings;
+    a missing display cell becomes None, never a fabricated value."""
+    source = tmp_path / "attr.csv"
+    with source.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["biz", "name", "kind", "east", "north",
+                         "stars", "review_count", "price", "takeout"])
+        writer.writerow(["b-1", "Cafe One", "Cafe", "10.0", "20.0",
+                         "4.0", "80", "2", "true"])
+        writer.writerow(["b-2", "Bar Two", "Bar", "30.0", "40.0", "4.5", "", "", ""])
+    monkeypatch.setattr("server.datasets.PREPARED_DIR", tmp_path / "prepared")
+    dataset = prepare(DatasetInfo(
+        id="attr", label="Attr", source=source,
+        columns=ColumnMap(
+            feature="kind", x="east", y="north", identifier="biz", name="name",
+            stars="stars", review_count="review_count", attributes=("price", "takeout"),
+        ),
+    ))
+    first, second = dataset.instances
+    assert first["name"] == "Cafe One"
+    assert first["stars"] == 4.0 and isinstance(first["stars"], float)
+    assert first["review_count"] == 80 and isinstance(first["review_count"], int)
+    assert first["attributes"] == {"price": "2", "takeout": "true"}
+    # empty cells -> None, never "" or a fabricated "No"/"false"
+    assert second["review_count"] is None
+    assert second["attributes"] == {"price": None, "takeout": None}
+
+
 def test_missing_column_is_reported_by_name(info, monkeypatch, tmp_path, source_csv):
     monkeypatch.setattr("server.datasets.PREPARED_DIR", tmp_path / "prepared")
     broken = DatasetInfo(

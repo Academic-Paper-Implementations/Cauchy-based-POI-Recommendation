@@ -32,6 +32,12 @@ PREPARED_DIR = RUNTIME / "datasets"
 POI_SIBLING = ROOT.parent / "POI_recommend" / "data" / "yelp" / "philadelphia"
 JOINLESS_SIBLING = ROOT.parent / "A-Joinless-Approach-for-Mining-Spatial-Colocation-Patterns"
 
+# Display-only popup columns carried by the cuisine explorer datasets (never mined).
+CUISINE_ATTRIBUTES = (
+    "is_open", "price", "takeout", "delivery", "outdoor_seating",
+    "good_for_kids", "alcohol", "wifi", "ambience", "hours",
+)
+
 
 @dataclass(frozen=True)
 class ColumnMap:
@@ -43,6 +49,14 @@ class ColumnMap:
     latitude: str | None = None
     longitude: str | None = None
     identifier: str | None = None
+    # Display-only fields for the explorer (all optional; unset = absent from the
+    # instance record, so existing datasets keep their exact shape). name/stars/
+    # review_count are first-class (the UI sorts/badges on them); everything in
+    # `attributes` is a display-only popup bag that never enters the miner.
+    name: str | None = None
+    stars: str | None = None
+    review_count: str | None = None
+    attributes: tuple[str, ...] = ()
 
 
 @dataclass
@@ -105,6 +119,28 @@ def _philadelphia_source() -> Path | None:
     )
 
 
+def _philadelphia_cuisine_source() -> Path | None:
+    return _first_existing(
+        [
+            Path(os.environ["PHILADELPHIA_CUISINE_INSTANCES"])
+            if os.environ.get("PHILADELPHIA_CUISINE_INSTANCES")
+            else None,
+            SERVER_DATA / "philadelphia-cuisine" / "spatial_instances.csv",
+        ]
+    )
+
+
+def _new_orleans_source() -> Path | None:
+    return _first_existing(
+        [
+            Path(os.environ["NEW_ORLEANS_INSTANCES"])
+            if os.environ.get("NEW_ORLEANS_INSTANCES")
+            else None,
+            SERVER_DATA / "new-orleans" / "spatial_instances.csv",
+        ]
+    )
+
+
 def _toronto_source() -> Path | None:
     return _first_existing(
         [
@@ -146,6 +182,36 @@ def builtin_datasets() -> list[DatasetInfo]:
             )
         )
 
+    for cuisine_id, cuisine_label, cuisine_source, cuisine_desc in (
+        ("philadelphia-cuisine", "Philadelphia (cuisine co-location)",
+         _philadelphia_cuisine_source(),
+         "Fine-grained cuisine co-location, ~20 features, eps=100 m / min_prev=0.2."),
+        ("new-orleans", "New Orleans (cuisine co-location)",
+         _new_orleans_source(),
+         "Fine-grained cuisine co-location, ~19 features, eps=100 m / min_prev=0.2."),
+    ):
+        if cuisine_source:
+            found.append(
+                DatasetInfo(
+                    id=cuisine_id,
+                    label=cuisine_label,
+                    source=cuisine_source,
+                    columns=ColumnMap(
+                        feature="Feature",
+                        x="X",
+                        y="Y",
+                        latitude="latitude",
+                        longitude="longitude",
+                        identifier="business_id",
+                        name="name",
+                        stars="stars",
+                        review_count="review_count",
+                        attributes=CUISINE_ATTRIBUTES,
+                    ),
+                    description=cuisine_desc,
+                )
+            )
+
     toronto = _toronto_source()
     if toronto:
         found.append(
@@ -161,9 +227,20 @@ def builtin_datasets() -> list[DatasetInfo]:
     return found
 
 
+# Bump whenever _read_source changes the instance-record shape, so a prepared
+# cache built by older code over a byte-identical source is treated as stale
+# instead of silently serving records that lack the new fields.
+_RECORD_SCHEMA_VERSION = 2
+
+
 def _source_fingerprint(source: Path) -> dict:
     stat = source.stat()
-    return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns, "path": str(source)}
+    return {
+        "size": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
+        "path": str(source),
+        "schema": _RECORD_SCHEMA_VERSION,
+    }
 
 
 def prepare(info: DatasetInfo, *, force: bool = False) -> PreparedDataset:
@@ -229,11 +306,14 @@ def _read_source(info: DatasetInfo) -> list[dict]:
     # utf-8-sig: several of the prepared source files carry a BOM.
     with info.source.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
-        missing = [
-            name
-            for name in (columns.feature, columns.x, columns.y)
-            if name not in (reader.fieldnames or [])
-        ]
+        # feature/x/y are required; a mapped display column (name/stars/
+        # review_count/attributes) must also exist so a mis-mapping fails loudly
+        # instead of degrading to silent all-None. lat/lon/identifier keep their
+        # historical optional-tolerant behaviour.
+        expected = [columns.feature, columns.x, columns.y]
+        expected += [c for c in (columns.name, columns.stars, columns.review_count) if c]
+        expected += list(columns.attributes)
+        missing = [name for name in expected if name not in (reader.fieldnames or [])]
         if missing:
             raise ValueError(
                 f"{info.source.name} is missing required column(s): {', '.join(missing)}"
@@ -262,6 +342,19 @@ def _read_source(info: DatasetInfo) -> list[dict]:
             }
             identifier = row.get(columns.identifier) if columns.identifier else None
             record["id"] = identifier or f"{feature}{number}"
+            # Display fields, added only when the dataset maps them, so datasets
+            # without them (philadelphia, toronto) keep their exact record shape.
+            if columns.name:
+                record["name"] = (row.get(columns.name) or "").strip() or None
+            if columns.stars:
+                record["stars"] = _optional_float(row, columns.stars)
+            if columns.review_count:
+                record["review_count"] = _optional_int(row, columns.review_count)
+            if columns.attributes:
+                record["attributes"] = {
+                    col: ((row.get(col) or "").strip() or None)
+                    for col in columns.attributes
+                }
             instances.append(record)
 
     if not instances:
@@ -274,6 +367,15 @@ def _optional_float(row: dict, column: str | None) -> float | None:
         return None
     try:
         return float(row[column])
+    except (TypeError, ValueError, KeyError):
+        return None
+
+
+def _optional_int(row: dict, column: str | None) -> int | None:
+    if not column:
+        return None
+    try:
+        return int(float(row[column]))  # tolerate "80" and "80.0"
     except (TypeError, ValueError, KeyError):
         return None
 
