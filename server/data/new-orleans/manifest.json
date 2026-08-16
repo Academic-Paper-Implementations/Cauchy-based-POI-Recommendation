@@ -1,0 +1,47 @@
+{
+  "dataset_id": "new-orleans",
+  "label": "New Orleans (cuisine co-location)",
+  "city": "new orleans",
+  "state": "LA",
+  "source": "data/yelp_raw/yelp_academic_dataset_business.json",
+  "source_fingerprint": "edd966fba6561f2891df1568f82f33d86de9298d",
+  "projection_center": {
+    "lat0": 29.956474049816578,
+    "lon0": -90.07720775423205
+  },
+  "mining_defaults": {
+    "eps_m": 100.0,
+    "min_prev": 0.2
+  },
+  "instance_count": 2425,
+  "feature_count": 19,
+  "kappa": 1.32027,
+  "floor": 30,
+  "budget": 20,
+  "signature_included": [
+    "Cajun/Creole",
+    "Southern",
+    "Seafood"
+  ],
+  "feature_counts": {
+    "Coffee & Tea": 174,
+    "Seafood": 149,
+    "Pizza": 148,
+    "Specialty Food": 148,
+    "Southern": 142,
+    "Fitness & Instruction": 141,
+    "Cafes": 141,
+    "Fast Food": 138,
+    "American (New)": 134,
+    "Art Galleries": 133,
+    "American (Traditional)": 130,
+    "Venues & Event Spaces": 128,
+    "Beer": 128,
+    "Desserts": 128,
+    "Cocktail Bars": 116,
+    "Burgers": 116,
+    "Cajun/Creole": 87,
+    "Sandwiches": 81,
+    "Breakfast & Brunch": 63
+  }
+}

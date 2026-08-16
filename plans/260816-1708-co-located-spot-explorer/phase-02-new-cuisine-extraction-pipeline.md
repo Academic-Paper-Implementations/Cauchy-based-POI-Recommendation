@@ -1,11 +1,19 @@
 ---
 phase: 2
 title: "New cuisine extraction pipeline (Philadelphia + New Orleans)"
-status: pending
+status: completed
 priority: P1
 effort: "3-4d"
 dependencies: [1]
 ---
+
+> ✅ **COMPLETED 2026-08-16.** `server/extract/build_cuisine_dataset.py` builds both
+> packaged datasets. Verified: `datasets.prepare()` parses both; miner finishes at
+> ε=100/min_prev=0.2 (Phil 63.7 s, NOLA 4.3 s — comfortably in budget); Python κ matches
+> the C++ miner κ EXACTLY (Phil 1.8516, NOLA 1.3203; Phil > NOLA as EDA predicted). All
+> features ≥ 30; every signature cuisine included (Cheesesteaks/Vietnamese/Soul Food/Korean;
+> Cajun-Creole). Attributes serialise missing = "" (never "No"); name carried for the popup.
+> **Additive only — no existing file modified.** Results per city: each dataset's `manifest.json`.
 
 # Phase 2: New cuisine extraction pipeline
 

@@ -1,0 +1,49 @@
+{
+  "dataset_id": "philadelphia-cuisine",
+  "label": "Philadelphia (cuisine co-location)",
+  "city": "philadelphia",
+  "state": "PA",
+  "source": "data/yelp_raw/yelp_academic_dataset_business.json",
+  "source_fingerprint": "edd966fba6561f2891df1568f82f33d86de9298d",
+  "projection_center": {
+    "lat0": 39.97520199768875,
+    "lon0": -75.15424253187567
+  },
+  "mining_defaults": {
+    "eps_m": 100.0,
+    "min_prev": 0.2
+  },
+  "instance_count": 5724,
+  "feature_count": 20,
+  "kappa": 1.85159,
+  "floor": 30,
+  "budget": 20,
+  "signature_included": [
+    "Cheesesteaks",
+    "Soul Food",
+    "Vietnamese",
+    "Korean"
+  ],
+  "feature_counts": {
+    "Coffee & Tea": 469,
+    "Pizza": 402,
+    "Italian": 393,
+    "American (Traditional)": 393,
+    "Chinese": 382,
+    "Breakfast & Brunch": 378,
+    "Fitness & Instruction": 353,
+    "Desserts": 324,
+    "Grocery": 321,
+    "American (New)": 319,
+    "Seafood": 302,
+    "Burgers": 301,
+    "Specialty Food": 265,
+    "Bakeries": 247,
+    "Fast Food": 214,
+    "Cheesesteaks": 175,
+    "Sandwiches": 156,
+    "Vietnamese": 133,
+    "Soul Food": 99,
+    "Korean": 98
+  }
+}

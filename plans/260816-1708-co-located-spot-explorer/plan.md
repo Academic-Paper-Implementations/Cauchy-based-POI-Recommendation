@@ -55,7 +55,7 @@ committee's 11-08 decision to drop POI top-k recommendation. Full brainstorm:
 | # | Phase | Status |
 |---|-------|--------|
 | 1 | [Phase 1: Runtime feasibility spike (feature budget lock)](./phase-01-start.md) | ✅ Done — locked ~20 feat / ε=100 / min_prev=0.2 ([results](./phase-01-feasibility-results.md)) |
-| 2 | [Phase 2: New cuisine extraction pipeline](./phase-02-new-cuisine-extraction-pipeline.md) | Pending |
+| 2 | [Phase 2: New cuisine extraction pipeline](./phase-02-new-cuisine-extraction-pipeline.md) | ✅ Done — Phil+NOLA datasets built & mine-verified (κ 1.85 / 1.32) |
 | 3 | [Phase 3: Backend datasets + attributes (reuse click-POI)](./phase-03-backend-datasets-discovery-radius-attributes.md) | Pending |
 | 4 | [Phase 4: Separate clean Explorer app](./phase-04-frontend-explorer-mode.md) | Pending |
 | 5 | [Phase 5: Extensibility seam, tests, docs](./phase-05-extensibility-seam-tests-docs.md) | Pending |
@@ -65,8 +65,9 @@ committee's 11-08 decision to drop POI top-k recommendation. Full brainstorm:
 - [x] Miner runs on a cuisine dataset within an agreed time budget — **Phase 1 locked
       ~20 features/city, ε=100 m, min_prev=0.2** (Phil 107 s, NOLA 4 s; 25–30 features
       infeasible on Philadelphia).
-- [ ] Packaged Philadelphia + New Orleans cuisine datasets exist and mine into patterns
-      through the standard job flow.
+- [x] Packaged Philadelphia + New Orleans cuisine datasets exist and mine into patterns
+      through the standard job flow — **built & verified** (Phil 5724 inst/20 feat/κ1.85/63.7 s
+      → 309 patterns incl. 27 quads; NOLA 2425/19/κ1.32/4.3 s).
 - [ ] Explorer: pick a city → run a mine (user-set ε/threshold) → click a food/leisure POI
       → its co-located neighbours grouped by type-cluster, each with distance + rating;
       popup shows attributes present, missing = "unknown".
