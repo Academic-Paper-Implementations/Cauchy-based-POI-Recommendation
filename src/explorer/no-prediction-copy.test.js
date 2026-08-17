@@ -7,7 +7,17 @@ import { dirname, join } from 'node:path';
 // here"), never next-POI prediction — the committee dropped POI top-k. If a
 // prediction phrase creeps into any explorer surface, this fails the build.
 const HERE = dirname(fileURLToPath(import.meta.url));
-const BANNED = [/next stop/i, /predict/i, /\byour next\b/i, /forecast/i, /sẽ đến tiếp/i];
+const BANNED = [
+  /next stop/i,
+  /predict/i,
+  /\byour next\b/i,
+  /forecast/i,
+  /sẽ đến tiếp/i,
+  /gợi ý/i,
+  /đề xuất/i,
+  /dự đoán/i,
+  /nơi tiếp theo/i,
+];
 
 const sources = readdirSync(HERE).filter(
   (name) => (name.endsWith('.jsx') || name.endsWith('.js')) && !name.includes('.test.')

@@ -13,6 +13,14 @@ export const MIN_PREV_MAX = 1;
 export const DEFAULT_EPS_M = 100; // Phase-1 locked feasible budget for the cuisine datasets.
 export const DEFAULT_MIN_PREV = 0.2;
 
+export const rangeError = (value, lo, hi) => {
+  const n = Number(value);
+  if (!Number.isFinite(n) || value === '') return 'Nhập số hợp lệ';
+  if (n < lo) return `Tối thiểu ${lo}`;
+  if (n > hi) return `Tối đa ${hi}`;
+  return '';
+};
+
 const clamp = (value, lo, hi, fallback) => {
   const n = Number(value);
   // Number('') === 0; a cleared field must fall back, not mine at zero.

@@ -14,11 +14,11 @@ describe('PoiPopup', () => {
     );
     expect(screen.getByText('Bar One')).toBeInTheDocument();
     expect(screen.getByText(/4\.0/)).toBeInTheDocument();
-    expect(screen.getByText(/43 m away/)).toBeInTheDocument();
-    expect(screen.getByText('Takeout')).toBeInTheDocument();
+    expect(screen.getByText(/Cách 43 m/)).toBeInTheDocument();
+    expect(screen.getByText('Mang đi')).toBeInTheDocument();
   });
 
-  it('shows "Unrated" for missing stars and never renders a missing attribute as "No"', () => {
+  it('shows "Chưa đánh giá" for missing stars and never renders a missing attribute as "Không"', () => {
     render(
       <PoiPopup
         poi={{
@@ -27,8 +27,8 @@ describe('PoiPopup', () => {
         }}
       />
     );
-    expect(screen.getByText('Unrated')).toBeInTheDocument();
-    expect(screen.queryByText(/No takeout/)).toBeNull();
-    expect(screen.queryByText(/No delivery/)).toBeNull();
+    expect(screen.getByText('Chưa đánh giá')).toBeInTheDocument();
+    expect(screen.queryByText(/Không mang đi/)).toBeNull();
+    expect(screen.queryByText(/Không giao hàng/)).toBeNull();
   });
 });

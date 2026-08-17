@@ -19,16 +19,16 @@ const RENDERERS = {
     const n = Number.parseInt(value, 10);
     return n >= 1 && n <= 4 ? '$'.repeat(n) : null;
   },
-  takeout: BOOL('Takeout', 'No takeout'),
-  delivery: BOOL('Delivery', 'No delivery'),
-  outdoor_seating: BOOL('Outdoor seating', 'No outdoor seating'),
-  good_for_kids: BOOL('Good for kids', 'Not for kids'),
-  alcohol: ENUM('Alcohol', {
-    full_bar: 'full bar',
-    beer_and_wine: 'beer & wine',
-    none: 'none',
+  takeout: BOOL('Mang đi', 'Không mang đi'),
+  delivery: BOOL('Giao hàng', 'Không giao hàng'),
+  outdoor_seating: BOOL('Ngồi ngoài trời', 'Không ngồi ngoài'),
+  good_for_kids: BOOL('Phù hợp trẻ em', 'Không cho trẻ'),
+  alcohol: ENUM('Rượu', {
+    full_bar: 'đủ loại',
+    beer_and_wine: 'bia & rượu vang',
+    none: 'không',
   }),
-  wifi: ENUM('WiFi', { free: 'free', paid: 'paid', no: 'none' }),
+  wifi: ENUM('WiFi', { free: 'miễn phí', paid: 'trả phí', no: 'không' }),
   ambience: (value) =>
     value ? value.split('|').map((word) => word.replace(/_/g, ' ')).join(', ') : null,
 };

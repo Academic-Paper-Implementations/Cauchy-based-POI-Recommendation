@@ -7,15 +7,15 @@ describe('describeAttributes', () => {
     expect(chips).toEqual([]);
   });
 
-  it('renders a genuine false as an explicit "No ..." chip', () => {
-    expect(describeAttributes({ takeout: 'false' })).toEqual(['No takeout']);
+  it('renders a genuine false as an explicit "Không ..." chip', () => {
+    expect(describeAttributes({ takeout: 'false' })).toEqual(['Không mang đi']);
   });
 
   it('renders the known values in order', () => {
     const chips = describeAttributes({
       price: '2', takeout: 'true', alcohol: 'full_bar', wifi: 'free', ambience: 'casual|hipster',
     });
-    expect(chips).toEqual(['$$', 'Takeout', 'Alcohol: full bar', 'WiFi: free', 'casual, hipster']);
+    expect(chips).toEqual(['$$', 'Mang đi', 'Rượu: đủ loại', 'WiFi: miễn phí', 'casual, hipster']);
   });
 
   it('treats an out-of-range or empty price as unknown', () => {

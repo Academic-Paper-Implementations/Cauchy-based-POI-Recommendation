@@ -17,7 +17,6 @@ import { toBounds, toLatLng } from '../utils/crs';
 // does not rebuild the layer. `preferCanvas` keeps the DOM out of it.
 
 const BASE_STYLE = { radius: 3, weight: 0, fillOpacity: 0.65 };
-const DIMMED_STYLE = { radius: 2, weight: 0, fillOpacity: 0.12 };
 const NEIGHBOR_STYLE = { radius: 6, weight: 1.5, color: '#ffffff', fillOpacity: 1 };
 const SELECTED_STYLE = { radius: 9, weight: 2.5, color: '#ffffff', fillOpacity: 1 };
 
@@ -25,6 +24,8 @@ const SELECTED_STYLE = { radius: 9, weight: 2.5, color: '#ffffff', fillOpacity: 
 const SIMPLE_MIN_ZOOM = -12;
 // Web-mercator zoom at which an epsilon of tens of metres is finally legible.
 const LATLON_SELECTION_ZOOM = 17;
+
+import { shouldRecenter } from '../utils/map-helpers';
 
 const key = (feature, number) => `${feature} ${number}`;
 
@@ -39,6 +40,7 @@ export default function LeafletMap({
   regions,
   onRegionSelect,
   focusRegion,
+  onRecenterReady,
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -96,11 +98,15 @@ export default function LeafletMap({
       markersRef.current.set(key(instance.feature, instance.number), marker);
     });
 
-    map.fitBounds(L.latLngBounds(instances.map((i) => toLatLng(crs, i))), {
-      padding: [20, 20],
-    });
+    const bounds = L.latLngBounds(instances.map((i) => toLatLng(crs, i)));
+    map.fitBounds(bounds, { padding: [20, 20] });
+
+    if (onRecenterReady) {
+      onRecenterReady(() => map.fitBounds(bounds, { padding: [20, 20] }));
+    }
+
     return () => layer.remove();
-  }, [instances, colors, onSelect, crs]);
+  }, [instances, colors, onSelect, crs, onRecenterReady]);
 
   // Restyle for the current selection instead of rebuilding the layer.
   useEffect(() => {
@@ -109,7 +115,6 @@ export default function LeafletMap({
 
     const neighborKeys = new Set((neighbors || []).map((n) => key(n.feature, n.number)));
     const selectedKey = selected ? key(selected.feature, selected.number) : null;
-    const highlighting = Boolean(selectedKey);
 
     markers.forEach((marker, markerKey) => {
       if (markerKey === selectedKey) {
@@ -119,7 +124,8 @@ export default function LeafletMap({
         marker.setStyle({ ...NEIGHBOR_STYLE, fillColor: marker.options.fillColor });
         marker.bringToFront();
       } else {
-        marker.setStyle(highlighting ? DIMMED_STYLE : BASE_STYLE);
+        // Keep non-members visible at base style (no near-invisible dimming).
+        marker.setStyle(BASE_STYLE);
       }
     });
   }, [selected, neighbors]);
@@ -161,7 +167,12 @@ export default function LeafletMap({
             )
           )
         : LATLON_SELECTION_ZOOM;
-    map.setView(center, Math.max(map.getZoom(), closeEnough));
+
+    // Only recenter when the point is off-screen or the zoom is too low to see the
+    // circle legibly. Otherwise respect the user's current pan/zoom.
+    if (shouldRecenter(map.getBounds(), center, map.getZoom(), closeEnough)) {
+      map.setView(center, Math.max(map.getZoom(), closeEnough));
+    }
   }, [selected, radiusM, crs]);
 
   // Recommended regions, in their own layer group underneath the markers: the
