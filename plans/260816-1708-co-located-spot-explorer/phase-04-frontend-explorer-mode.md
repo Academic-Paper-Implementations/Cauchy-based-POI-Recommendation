@@ -1,11 +1,21 @@
 ---
 phase: 4
 title: "Separate clean Explorer app"
-status: pending
+status: completed
 priority: P1
 effort: "4-5d"
 dependencies: [3]
 ---
+
+> ✅ **COMPLETED 2026-08-17.** Separate Vite entry `explorer.html` → `src/explorer/`
+> (explorer-app, city-mining-panel, cluster-group-list, poi-popup,
+> discovery-radius-control, attributes). Reuses `LeafletMap`/`use-mining-job`/`api`/`crs`/
+> `feature-colors`; imports NO Investor/Mining component; research app untouched. Click-POI
+> → `query_instance` grouped neighbours; popup shows known attributes only (missing never
+> "No"); discovery radius is a client-side filter clamped to the mined ε (legend reads the
+> real job `eps_m`); `is_open=0` filtered out. 12 new tests; 37/37 frontend tests, build, and
+> lint green; live data contract verified. Review fixes: exclude origin from its own group,
+> clamp ε/min_prev on submit, drop dead prop, distinguish empty-state copy.
 
 # Phase 4: Frontend — separate, clean Explorer app
 

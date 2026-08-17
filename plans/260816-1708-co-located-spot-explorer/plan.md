@@ -57,7 +57,7 @@ committee's 11-08 decision to drop POI top-k recommendation. Full brainstorm:
 | 1 | [Phase 1: Runtime feasibility spike (feature budget lock)](./phase-01-start.md) | ✅ Done — locked ~20 feat / ε=100 / min_prev=0.2 ([results](./phase-01-feasibility-results.md)) |
 | 2 | [Phase 2: New cuisine extraction pipeline](./phase-02-new-cuisine-extraction-pipeline.md) | ✅ Done — Phil+NOLA datasets built & mine-verified (κ 1.85 / 1.32) |
 | 3 | [Phase 3: Backend datasets + attributes (reuse click-POI)](./phase-03-backend-datasets-discovery-radius-attributes.md) | ✅ Done — datasets registered + attributes on query_instance (76 tests green) |
-| 4 | [Phase 4: Separate clean Explorer app](./phase-04-frontend-explorer-mode.md) | Pending |
+| 4 | [Phase 4: Separate clean Explorer app](./phase-04-frontend-explorer-mode.md) | ✅ Done — Explorer app built (explorer.html), 37 frontend tests green |
 | 5 | [Phase 5: Extensibility seam, tests, docs](./phase-05-extensibility-seam-tests-docs.md) | Pending |
 
 ## Success Criteria
@@ -68,14 +68,17 @@ committee's 11-08 decision to drop POI top-k recommendation. Full brainstorm:
 - [x] Packaged Philadelphia + New Orleans cuisine datasets exist and mine into patterns
       through the standard job flow — **built & verified** (Phil 5724 inst/20 feat/κ1.85/63.7 s
       → 309 patterns incl. 27 quads; NOLA 2425/19/κ1.32/4.3 s).
-- [ ] Explorer: pick a city → run a mine (user-set ε/threshold) → click a food/leisure POI
+- [x] Explorer: pick a city → run a mine (user-set ε/threshold) → click a food/leisure POI
       → its co-located neighbours grouped by type-cluster, each with distance + rating;
-      popup shows attributes present, missing = "unknown". **Backend ready (Phase 3):**
-      `query_instance` returns grouped neighbours w/ distance + name + stars + attributes.
-- [ ] Discovery radius is a client-side view filter and can never reach the backend as
-      `eps_m` / trigger a re-mine.
-- [ ] Explorer is a separate clean frontend; Investor/Mining spatial_web frontend
-      unchanged; no endpoint implies next-POI prediction.
+      popup shows attributes present, missing = "unknown". **Done (Phase 4)** on the
+      `query_instance` grouped-neighbours response.
+- [x] Discovery radius is a client-side view filter and can never reach the backend as
+      `eps_m` / trigger a re-mine — **Phase 4:** slider only filters `neighbors` by
+      `distance_m`, clamped to the mined ε; `createJob` gets the search-distance knob, never
+      the radius.
+- [x] Explorer is a separate clean frontend; Investor/Mining spatial_web frontend
+      unchanged; no endpoint implies next-POI prediction — **Phase 4:** own `explorer.html`
+      entry, no Investor/Mining imports, no prediction wording (Phase 5 adds the guard test).
 - [ ] Red-team + validation gates pass; whole-plan consistency clean.
 
 ## Constraints & Non-goals (inherited from brainstorm + locked decisions)
