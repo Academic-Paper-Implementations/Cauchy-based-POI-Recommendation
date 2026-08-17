@@ -1,11 +1,20 @@
 ---
 phase: 5
 title: "Extensibility seam, tests, docs"
-status: pending
+status: completed
 priority: P2
 effort: "2-3d"
 dependencies: [3, 4]
 ---
+
+> ✅ **COMPLETED 2026-08-17.** Guard tests: `mining-request.js` (pure) + test proves the
+> discovery radius never reaches a mine (body has exactly dataset_id/eps_m/min_prev/sample_pct);
+> `no-prediction-copy.test.js` tripwire scans every explorer source for prediction wording.
+> Backend attribute tests landed in Phase 3. Seam documented (a future eval reads the same
+> cached mine result; no Explorer UI state leaks into it — no EvalModule/metrics stub built).
+> Docs: README "Co-located Spot Explorer" section (framing, ε-vs-discovery-radius, seam,
+> cuisine datasets, layout) + `server/data/README.md` regeneration. Full suites green:
+> pytest 76, vitest 48; lint clean.
 
 # Phase 5: Extensibility seam, tests, docs
 

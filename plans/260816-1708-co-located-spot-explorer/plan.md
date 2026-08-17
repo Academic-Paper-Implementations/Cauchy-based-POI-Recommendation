@@ -1,7 +1,7 @@
 ---
 title: "Co-located Spot Explorer"
 description: "Second end-user app: a SEPARATE, clean Explorer frontend reusing the existing backend + C++ miner. User mines a city (standard job flow, user-set ε/threshold), then clicks a food/leisure POI to see its co-located neighbours grouped by type-cluster, each with distance + rating + attributes popup, filtered by a client-side discovery radius. Discovery framing, not next-POI prediction."
-status: pending
+status: completed
 priority: P1
 effort: "2-3w"
 tags: [poi, co-location, explorer, yelp, frontend, pipeline]
@@ -58,7 +58,7 @@ committee's 11-08 decision to drop POI top-k recommendation. Full brainstorm:
 | 2 | [Phase 2: New cuisine extraction pipeline](./phase-02-new-cuisine-extraction-pipeline.md) | ✅ Done — Phil+NOLA datasets built & mine-verified (κ 1.85 / 1.32) |
 | 3 | [Phase 3: Backend datasets + attributes (reuse click-POI)](./phase-03-backend-datasets-discovery-radius-attributes.md) | ✅ Done — datasets registered + attributes on query_instance (76 tests green) |
 | 4 | [Phase 4: Separate clean Explorer app](./phase-04-frontend-explorer-mode.md) | ✅ Done — Explorer app built (explorer.html), 37 frontend tests green |
-| 5 | [Phase 5: Extensibility seam, tests, docs](./phase-05-extensibility-seam-tests-docs.md) | Pending |
+| 5 | [Phase 5: Extensibility seam, tests, docs](./phase-05-extensibility-seam-tests-docs.md) | ✅ Done — guard tests + docs; pytest 76 / vitest 48 green |
 
 ## Success Criteria
 
@@ -79,7 +79,9 @@ committee's 11-08 decision to drop POI top-k recommendation. Full brainstorm:
 - [x] Explorer is a separate clean frontend; Investor/Mining spatial_web frontend
       unchanged; no endpoint implies next-POI prediction — **Phase 4:** own `explorer.html`
       entry, no Investor/Mining imports, no prediction wording (Phase 5 adds the guard test).
-- [ ] Red-team + validation gates pass; whole-plan consistency clean.
+- [x] Red-team + validation gates pass; whole-plan consistency clean — plan ran under
+      `/ak-plan --deep` (red-team + validation), each implementation phase reviewed
+      (code-reviewer; Phase 3 also kongming-advised). All five phases complete.
 
 ## Constraints & Non-goals (inherited from brainstorm + locked decisions)
 

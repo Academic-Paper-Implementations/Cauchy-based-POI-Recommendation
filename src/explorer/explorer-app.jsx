@@ -7,9 +7,8 @@ import CityMiningPanel from './city-mining-panel.jsx';
 import ClusterGroupList from './cluster-group-list.jsx';
 import DiscoveryRadiusControl from './discovery-radius-control.jsx';
 import PoiPopup from './poi-popup.jsx';
+import { miningRequest, DEFAULT_EPS_M, DEFAULT_MIN_PREV } from './mining-request';
 
-const DEFAULT_EPS_M = 100; // Phase-1 locked feasible budget for the cuisine datasets.
-const DEFAULT_MIN_PREV = 0.2;
 const RARE = { rarePercentile: DEFAULT_RARE_PERCENTILE, rareMinCount: RARE_MIN_COUNT };
 
 // Only the cuisine datasets carry the names/attributes the explorer needs.
@@ -37,8 +36,8 @@ export default function ExplorerApp() {
   const minedEps = job?.params?.eps_m ?? epsM;
 
   // When a fresh result lands, open the discovery radius to the mined distance.
-  // Done during render (the React-recommended "reset state on input change"
-  // pattern) rather than in an effect, so there is no cascading re-render.
+  // Done during render (the "reset state on input change" pattern React suggests)
+  // rather than in an effect, so there is no cascading re-render.
   if (result && job?.job_id && job.job_id !== radiusJobId) {
     setRadiusJobId(job.job_id);
     setRadiusM(minedEps);
@@ -79,11 +78,9 @@ export default function ExplorerApp() {
 
   const handleRun = useCallback(() => {
     clearSelection();
-    // Clamp on submit: the input min/max only bind the spinner, not a typed or
-    // cleared value (Number('') === 0), and eps_m=0 / min_prev=0 is a bad mine.
-    const eps = Math.min(300, Math.max(20, Number(epsM) || DEFAULT_EPS_M));
-    const prev = Math.min(1, Math.max(0.05, Number(minPrev) || DEFAULT_MIN_PREV));
-    run({ dataset_id: selectedCity, eps_m: eps, min_prev: prev, sample_pct: 1.0 });
+    // miningRequest carries only the search distance + threshold (clamped), never
+    // the discovery radius — the radius is a view filter and must not reach a mine.
+    run(miningRequest({ datasetId: selectedCity, epsM, minPrev }));
   }, [run, selectedCity, epsM, minPrev, clearSelection]);
 
   const colors = useMemo(

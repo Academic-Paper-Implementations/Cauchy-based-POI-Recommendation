@@ -34,6 +34,36 @@ There is one mining implementation in this repository: the C++ engine under
 Recommendations rank co-location support in the patterns the miner found. They
 are not a forecast of commercial success, and the app says so where they appear.
 
+## Co-located Spot Explorer
+
+A second, separate end-user app served from its own page (`explorer.html`),
+sharing the backend and the map/CRS utilities but none of the research UI. It is
+framed as **discovery** — "what kinds of places cluster around here" — never
+next-POI **prediction** (the committee dropped POI top-k).
+
+Flow: pick a city, run a co-location search (the same mining job, with a plainly
+labelled *search distance* and *how-common* threshold), then click a place on the
+map to see the kinds of spots co-located around it, grouped by pattern, each with
+distance, rating, and an attributes popup. Co-location is the silent ranking
+engine; the rare/WPI/κ vocabulary stays in the research app.
+
+**Two distances, kept apart.** The mining **search distance** (ε) defines what
+counts as co-located and re-mines when changed. The **discovery radius** is a
+view-only slider that filters which nearby places are shown; it is clamped to the
+mined ε (co-located groups cannot exist beyond it), is never sent to the miner,
+and never triggers a re-mine.
+
+**Datasets.** The Explorer uses two packaged cuisine datasets (see the table
+below and `server/data/README.md` for how to regenerate them). Attributes
+(price, takeout, hours, …) are display-only and never enter mining; a missing
+attribute is shown as unknown, never as "No"; permanently-closed places are hidden.
+
+**Extensibility (designed, not built).** A future evaluation module would be a
+sibling that reads the same cached mine result (patterns / instances / params)
+the Explorer reads. That cached result carries no Explorer UI state (the selected
+place, the discovery radius, popup toggles), so the seam is already clean. No
+evaluation code ships yet, and the baseline is deliberately undecided.
+
 ## Quick start
 
 Requires Node 20+, Python 3.10+, and a C++17 compiler.
@@ -50,7 +80,8 @@ python -m venv .venv && .venv/bin/pip install -r server/requirements.txt
 
 # 3. Run both (Vite proxies /api to the API)
 npm run dev:all
-# frontend http://localhost:5173 · API http://localhost:8000
+# research app http://localhost:5173/ · Explorer http://localhost:5173/explorer.html
+# API http://localhost:8000
 ```
 
 Single-process production run:
@@ -78,7 +109,9 @@ container restart throws those results away.
 
 | Dataset | Packaged | Coordinates | Notes |
 |---|---|---|---|
-| Philadelphia (Yelp POI) | yes | lat/lon + metres | 9,928 businesses, 20 categories, OpenStreetMap view |
+| Philadelphia (Yelp POI) | yes | lat/lon + metres | 9,928 businesses, 20 categories, research app |
+| Philadelphia (cuisine) | yes | lat/lon + metres | ~5,700 places, 20 fine-grained cuisines + attributes, Explorer |
+| New Orleans (cuisine) | yes | lat/lon + metres | ~2,400 places, 19 cuisines + attributes, Explorer |
 | Toronto | no | metres only | Verification fixture, flat-CRS view with no tiles; found via the sibling repository if present |
 
 Toronto pins the engine's numbers: ε = 120 m, min prevalence = 0.2 must give
@@ -175,7 +208,10 @@ uploads, and the projection checked against Philadelphia's own X/Y columns.
 
 The Vitest suite covers the poll state machine, the rare-threshold debounce and
 its stale-response guard, both recommendation panels, and the coordinate adapter
-that separates the two CRS paths.
+that separates the two CRS paths. For the Explorer it covers the attribute popup
+(a missing attribute is never shown as "No"), the discovery-radius clamp, the
+mining-request guard that proves the discovery radius never reaches a mine, and a
+tripwire that fails the build on any next-POI prediction wording.
 
 ## Layout
 
@@ -188,9 +224,13 @@ server/
   pattern_query.py   instance -> patterns -> co-participating neighbours
   recommendation.py  feature bitmasks, cell scoring, region flood fill
   upload.py          CSV validation and local projection
+  extract/           build the packaged cuisine datasets from raw Yelp business.json
   engine/            vendored C++ miner (see PROVENANCE.md)
+index.html           research app entry
+explorer.html        Explorer app entry (separate page, same backend)
 src/
-  App.jsx            single screen wiring map, controls, job, both view modes
+  App.jsx            research app: map, controls, job, both view modes
+  explorer/          Explorer app: city search, click-POI groups, popup, view radius
   hooks/             use-mining-job: submit, poll, result, rare threshold
   components/        leaflet-map (both CRS) and the mining/investor panels
   utils/             feature colours, coordinate adapter for the two CRS
