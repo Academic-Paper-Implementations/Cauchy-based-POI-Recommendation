@@ -40,3 +40,9 @@ server/runtime/
 *.njsproj
 *.sln
 *.sw?
+
+# Raw Yelp dataset (multi-GB) — never commit
+data/yelp_raw/
+
+# Local agent tooling / memory (any depth)
+.claude/

@@ -183,10 +183,10 @@ def builtin_datasets() -> list[DatasetInfo]:
         )
 
     for cuisine_id, cuisine_label, cuisine_source, cuisine_desc in (
-        ("philadelphia-cuisine", "Philadelphia (cuisine co-location)",
+        ("philadelphia-cuisine", "Philadelphia (co-location)",
          _philadelphia_cuisine_source(),
          "Fine-grained cuisine co-location, ~20 features, eps=100 m / min_prev=0.2."),
-        ("new-orleans", "New Orleans (cuisine co-location)",
+        ("new-orleans", "New Orleans (co-location)",
          _new_orleans_source(),
          "Fine-grained cuisine co-location, ~19 features, eps=100 m / min_prev=0.2."),
     ):

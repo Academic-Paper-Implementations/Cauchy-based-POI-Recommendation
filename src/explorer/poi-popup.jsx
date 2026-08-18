@@ -6,7 +6,7 @@ import { describeAttributes, todayHours } from './attributes';
 
 function Stars({ stars, reviewCount }) {
   if (stars === null || stars === undefined) {
-    return <span className="text-slate-500">Chưa đánh giá</span>;
+    return <span className="text-slate-500">No rating yet</span>;
   }
   return (
     <span className="text-amber-300">
@@ -22,21 +22,21 @@ function CoLocationLine({ tier1Info }) {
   if (patternCount > 1) {
     return (
       <p className="mt-2 text-xs text-sky-400/80">
-        Thuộc {patternCount} nhóm đồng vị
+        In {patternCount} co-location groups
       </p>
     );
   }
   return (
     <p className="mt-2 text-xs text-sky-400/80">
-      Đồng vị với {patternFeatures.join(' + ')}
+      Co-located with {patternFeatures.join(' + ')}
     </p>
   );
 }
 
-export default function PoiPopup({ poi, tier1Info, onClose }) {
+export default function PoiPopup({ poi, tier1Info, onClose, now }) {
   if (!poi) return null;
   const chips = describeAttributes(poi.attributes);
-  const hours = todayHours(poi.attributes?.hours);
+  const hours = todayHours(poi.attributes?.hours, now);
 
   return (
     <div className="rounded-lg border border-slate-700 bg-slate-800/95 p-4 shadow-xl">
@@ -51,7 +51,7 @@ export default function PoiPopup({ poi, tier1Info, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            aria-label="Đóng"
+            aria-label="Close"
             className="rounded px-2 text-slate-400 hover:text-slate-200"
           >
             ✕
@@ -62,9 +62,9 @@ export default function PoiPopup({ poi, tier1Info, onClose }) {
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <Stars stars={poi.stars} reviewCount={poi.review_count} />
         {typeof poi.distance_m === 'number' && (
-          <span className="text-slate-300">Cách {Math.round(poi.distance_m)} m</span>
+          <span className="text-slate-300">{Math.round(poi.distance_m)} m away</span>
         )}
-        {hours && <span className="text-slate-400">Hôm nay {hours}</span>}
+        {hours && <span className="text-slate-400">Today {hours}</span>}
       </div>
 
       <CoLocationLine tier1Info={tier1Info} />

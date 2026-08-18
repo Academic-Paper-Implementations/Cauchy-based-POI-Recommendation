@@ -15,9 +15,9 @@ export const DEFAULT_MIN_PREV = 0.2;
 
 export const rangeError = (value, lo, hi) => {
   const n = Number(value);
-  if (!Number.isFinite(n) || value === '') return 'Nhập số hợp lệ';
-  if (n < lo) return `Tối thiểu ${lo}`;
-  if (n > hi) return `Tối đa ${hi}`;
+  if (!Number.isFinite(n) || value === '') return 'Enter a valid number';
+  if (n < lo) return `Min ${lo}`;
+  if (n > hi) return `Max ${hi}`;
   return '';
 };
 

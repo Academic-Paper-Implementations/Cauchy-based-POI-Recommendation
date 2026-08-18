@@ -7,6 +7,8 @@ import CityMiningPanel from './city-mining-panel.jsx';
 import NearbyList from './nearby-list.jsx';
 import DiscoveryRadiusControl from './discovery-radius-control.jsx';
 import PoiPopup from './poi-popup.jsx';
+import GuideModal from './guide-modal.jsx';
+import PoiSearch from './poi-search.jsx';
 import { miningRequest, DEFAULT_EPS_M, DEFAULT_MIN_PREV } from './mining-request';
 import { euclidean, RADIUS_MAX_M } from '../utils/map-helpers';
 
@@ -15,7 +17,8 @@ const TIER2_CAP = 20;
 const RARE = { rarePercentile: DEFAULT_RARE_PERCENTILE, rareMinCount: RARE_MIN_COUNT };
 
 // Only the cuisine datasets carry the names/attributes the explorer needs.
-const isCuisineDataset = (dataset) => /cuisine/i.test(dataset.label || dataset.id);
+const CUISINE_DATASET_IDS = ['philadelphia-cuisine', 'new-orleans'];
+const isCuisineDataset = (dataset) => CUISINE_DATASET_IDS.includes(dataset.id);
 
 export default function ExplorerApp() {
   const [datasets, setDatasets] = useState([]);
@@ -30,6 +33,7 @@ export default function ExplorerApp() {
   const [radiusM, setRadiusM] = useState(DEFAULT_EPS_M);
   const [radiusJobId, setRadiusJobId] = useState(null);
   const [detailError, setDetailError] = useState('');
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const { job, jobError, result, running, run, reset, cancel } = useMiningJob();
   const instancesCacheRef = useRef(new Map());
@@ -179,9 +183,14 @@ export default function ExplorerApp() {
   return (
     <div className="flex h-screen flex-col bg-slate-900 text-slate-100">
       <header className="border-b border-slate-800 px-4 py-3">
-        <h1 className="text-lg font-semibold">Khám phá địa điểm đồng vị</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold">Co-located Spot Explorer</h1>
+          <span className="rounded bg-sky-600 px-1.5 py-0.5 text-xs font-medium text-white">
+            AIP490-G13
+          </span>
+        </div>
         <p className="text-sm text-slate-400">
-          Chọn thành phố, nhấp vào một nơi để xem các loại hình hay đi cùng xung quanh.
+          Pick a city and run the search, then click a place to see the types that cluster around it.
         </p>
       </header>
 
@@ -200,8 +209,12 @@ export default function ExplorerApp() {
             running={running}
             job={job}
             jobError={jobError}
-            hasResult={Boolean(result)}
+            result={result}
           />
+
+          {instances.length > 0 && (
+            <PoiSearch instances={instances} onSelect={handlePoiClick} />
+          )}
 
           {ready && (
             <>
@@ -209,12 +222,12 @@ export default function ExplorerApp() {
               <div>
                 <h2 className="mb-2 text-sm font-semibold text-slate-300">
                   {selected
-                    ? `Quanh ${selected.name || selected.feature}`
-                    : 'Nhấp vào một nơi trên bản đồ'}
+                    ? `Around ${selected.name || selected.feature}`
+                    : 'Click a place on the map'}
                 </h2>
                 {detailError && <p className="text-sm text-rose-400">{detailError}</p>}
                 {selected && !detail && !detailError && (
-                  <p className="text-sm text-slate-500">Đang tìm xung quanh…</p>
+                  <p className="text-sm text-slate-500">Searching nearby…</p>
                 )}
                 {selected && detail && (
                   <NearbyList
@@ -241,16 +254,27 @@ export default function ExplorerApp() {
             crs="latlon"
             onRecenterReady={handleRecenterReady}
           />
-          {instances.length > 0 && (
+          <div className="absolute right-4 top-4 z-[1000] flex gap-2">
+            {instances.length > 0 && (
+              <button
+                type="button"
+                onClick={() => recenterRef.current?.()}
+                className="rounded-md bg-slate-800/90 px-3 py-1.5 text-xs font-medium text-slate-200 shadow hover:bg-slate-700"
+                title="Fit all places"
+              >
+                ↻ Fit all
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => recenterRef.current?.()}
-              className="absolute right-4 top-4 z-[1000] rounded-md bg-slate-800/90 px-3 py-1.5 text-xs font-medium text-slate-200 shadow hover:bg-slate-700"
-              title="Về toàn thành phố"
+              onClick={() => setGuideOpen(true)}
+              className="rounded-md bg-slate-800/90 px-3 py-1.5 text-xs font-medium text-slate-200 shadow hover:bg-slate-700"
+              title="Help"
+              aria-label="Help"
             >
-              ↻ Toàn TP
+              ?
             </button>
-          )}
+          </div>
           {popupPoi && (
             <div className="absolute bottom-6 left-6 z-[1000] w-72">
               <PoiPopup
@@ -262,6 +286,8 @@ export default function ExplorerApp() {
           )}
         </main>
       </div>
+
+      <GuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
     </div>
   );
 }

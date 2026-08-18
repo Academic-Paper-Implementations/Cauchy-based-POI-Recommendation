@@ -17,18 +17,18 @@ const ENUM = (label, map) => (value) => {
 const RENDERERS = {
   price: (value) => {
     const n = Number.parseInt(value, 10);
-    return n >= 1 && n <= 4 ? '$'.repeat(n) : null;
+    return n >= 1 && n <= 4 ? `Price ${'$'.repeat(n)}` : null;
   },
-  takeout: BOOL('Mang đi', 'Không mang đi'),
-  delivery: BOOL('Giao hàng', 'Không giao hàng'),
-  outdoor_seating: BOOL('Ngồi ngoài trời', 'Không ngồi ngoài'),
-  good_for_kids: BOOL('Phù hợp trẻ em', 'Không cho trẻ'),
-  alcohol: ENUM('Rượu', {
-    full_bar: 'đủ loại',
-    beer_and_wine: 'bia & rượu vang',
-    none: 'không',
+  takeout: BOOL('Takeout', 'No takeout'),
+  delivery: BOOL('Delivery', 'No delivery'),
+  outdoor_seating: BOOL('Outdoor seating', 'No outdoor seating'),
+  good_for_kids: BOOL('Good for kids', 'Not for kids'),
+  alcohol: ENUM('Alcohol', {
+    full_bar: 'full bar',
+    beer_and_wine: 'beer & wine',
+    none: 'none',
   }),
-  wifi: ENUM('WiFi', { free: 'miễn phí', paid: 'trả phí', no: 'không' }),
+  wifi: ENUM('WiFi', { free: 'free', paid: 'paid', no: 'none' }),
   ambience: (value) =>
     value ? value.split('|').map((word) => word.replace(/_/g, ' ')).join(', ') : null,
 };
@@ -56,6 +56,24 @@ export function describeAttributes(attributes) {
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+function padTime(time) {
+  const parts = time.split(':');
+  if (parts.length !== 2) return null;
+  const h = parts[0].padStart(2, '0');
+  const m = parts[1].padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+function formatHoursRange(range) {
+  if (!range || typeof range !== 'string') return null;
+  const parts = range.split('-');
+  if (parts.length !== 2) return null;
+  const start = padTime(parts[0]);
+  const end = padTime(parts[1]);
+  if (!start || !end) return null;
+  return `${start}–${end}`;
+}
+
 /** Today's opening hours from the packaged hours JSON, or null when unknown. */
 export function todayHours(hoursJson, now = new Date()) {
   if (!hoursJson) return null;
@@ -66,5 +84,5 @@ export function todayHours(hoursJson, now = new Date()) {
     return null;
   }
   const range = hours?.[DAYS[now.getDay()]];
-  return range || null;
+  return formatHoursRange(range);
 }

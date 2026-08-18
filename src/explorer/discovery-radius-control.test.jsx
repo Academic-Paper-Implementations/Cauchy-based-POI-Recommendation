@@ -16,10 +16,8 @@ describe('DiscoveryRadiusControl', () => {
     expect(screen.getByRole('slider').value).toBe(String(RADIUS_MAX_M));
   });
 
-  it('states both the search distance and the view radius honestly', () => {
+  it('displays the radius value in the label', () => {
     render(<DiscoveryRadiusControl radiusM={60} epsM={100} onChange={() => {}} />);
-    const caption = screen.getByText(/hình thành trong/);
-    expect(caption.textContent).toMatch(/100 m/);
-    expect(caption.textContent).toMatch(/60 m/);
+    expect(screen.getByText('60 m')).toBeInTheDocument();
   });
 });

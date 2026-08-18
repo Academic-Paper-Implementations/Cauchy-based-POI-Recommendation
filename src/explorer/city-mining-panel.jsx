@@ -7,13 +7,64 @@ import {
 } from './mining-request';
 
 const STAGE_LABELS = {
-  load: 'Đang tải địa điểm…',
-  neighbor_graph: 'Tìm các nơi gần nhau…',
-  maximal_clique: 'Nhóm các loại hình hay đi cùng…',
-  mining: 'Đánh giá các nhóm…',
-  export: 'Hoàn tất…',
-  done: 'Xong',
+  load: 'Loading places…',
+  neighbor_graph: 'Finding nearby places…',
+  maximal_clique: 'Grouping co-located types…',
+  mining: 'Evaluating groups…',
+  export: 'Finishing…',
+  done: 'Done',
 };
+
+function ProgressBar({ job }) {
+  if (!job || job.status !== 'running') return null;
+  const { stage_index, stage_count } = job;
+  if (stage_count == null || stage_count <= 1) return null;
+  const workStages = stage_count - 1;
+  const fraction = Math.min(1, Math.max(0, (stage_index + 1) / workStages));
+  const pct = Math.round(fraction * 100);
+
+  return (
+    <div className="space-y-1">
+      <div
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="h-2 w-full overflow-hidden rounded-full bg-slate-700"
+      >
+        <div
+          className="h-full bg-sky-500 transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-sm text-slate-400">
+        {STAGE_LABELS[job.stage] || job.stage}
+        {job.elapsed_s != null && ` — ${job.elapsed_s.toFixed(1)}s`}
+      </p>
+    </div>
+  );
+}
+
+function SuccessBanner({ job, result }) {
+  if (!result || job?.status !== 'done') return null;
+  const count = result.pattern_count ?? 0;
+  return (
+    <p className="text-sm text-emerald-400">
+      ✓ Done — {count} group{count !== 1 ? 's' : ''} found
+    </p>
+  );
+}
+
+function MinedBadge({ job, result, cityLabel }) {
+  if (!result || !job?.params) return null;
+  const { eps_m, min_prev } = job.params;
+  const count = result.pattern_count ?? 0;
+  return (
+    <p className="text-xs text-slate-400">
+      Mined: {cityLabel} · ε {eps_m} m · popularity {min_prev} → {count} group{count !== 1 ? 's' : ''}
+    </p>
+  );
+}
 
 export default function CityMiningPanel({
   datasets,
@@ -28,16 +79,18 @@ export default function CityMiningPanel({
   running,
   job,
   jobError,
-  hasResult,
+  result,
 }) {
   const epsError = rangeError(epsM, EPS_MIN_M, EPS_MAX_M);
   const minPrevError = rangeError(minPrev, MIN_PREV_MIN, MIN_PREV_MAX);
   const hasValidationError = Boolean(epsError || minPrevError);
+  const hasResult = Boolean(result);
+  const cityLabel = datasets.find((d) => d.id === job?.params?.dataset_id)?.label || selectedCity;
   return (
     <div className="space-y-4">
       <div>
         <label htmlFor="city" className="mb-1 block text-sm text-slate-300">
-          Thành phố
+          City
         </label>
         <select
           id="city"
@@ -46,7 +99,7 @@ export default function CityMiningPanel({
           className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
         >
           <option value="" disabled>
-            Chọn thành phố…
+            Select a city…
           </option>
           {datasets.map((dataset) => (
             <option key={dataset.id} value={dataset.id}>
@@ -59,7 +112,7 @@ export default function CityMiningPanel({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="eps" className="mb-1 block text-sm text-slate-300">
-            Khoảng cách (m)
+            Search distance (m)
           </label>
           <input
             id="eps"
@@ -77,7 +130,7 @@ export default function CityMiningPanel({
         </div>
         <div>
           <label htmlFor="minprev" className="mb-1 block text-sm text-slate-300">
-            Độ phổ biến (0–1)
+            Popularity (0–1)
           </label>
           <input
             id="minprev"
@@ -102,7 +155,7 @@ export default function CityMiningPanel({
           disabled={!selectedCity || running || hasValidationError}
           className="flex-1 rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-slate-900 hover:bg-sky-400 disabled:opacity-40"
         >
-          {running ? 'Đang tìm…' : hasResult ? 'Tìm lại' : 'Tìm nơi hay đi cùng'}
+          {running ? 'Searching…' : hasResult ? 'Search again' : 'Find co-located spots'}
         </button>
         {running && (
           <button
@@ -110,21 +163,18 @@ export default function CityMiningPanel({
             onClick={onCancel}
             className="rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-600"
           >
-            Hủy
+            Cancel
           </button>
         )}
       </div>
 
-      {running && job?.stage && (
-        <p className="text-sm text-slate-400">
-          {STAGE_LABELS[job.stage] || job.stage}
-          {job.elapsed_s != null && ` — ${job.elapsed_s.toFixed(1)}s`}
-        </p>
-      )}
+      {running && <ProgressBar job={job} />}
+      {!running && <SuccessBanner job={job} result={result} />}
+      {!running && <MinedBadge job={job} result={result} cityLabel={cityLabel} />}
       {jobError && <p className="text-sm text-rose-400">{jobError}</p>}
       <p className="text-xs text-slate-500">
-        Tìm kiếm có thể mất vài phút với thành phố lớn; kết quả được lưu cache,
-        lần sau cùng cài đặt sẽ trả về ngay.
+        Search may take a few minutes for larger cities; results are cached, so
+        the same settings will return instantly next time.
       </p>
     </div>
   );

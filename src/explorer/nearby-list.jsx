@@ -22,11 +22,22 @@ function PoiRow({ poi, selected, onSelect }) {
   );
 }
 
-function sortItems(items, sortBy) {
+function sortItems(items, sortBy, dir) {
+  const sorted = [...items];
   if (sortBy === 'rating') {
-    return [...items].sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0));
+    sorted.sort((a, b) =>
+      dir === 'desc'
+        ? (b.stars ?? 0) - (a.stars ?? 0)
+        : (a.stars ?? 0) - (b.stars ?? 0)
+    );
+  } else {
+    sorted.sort((a, b) =>
+      dir === 'asc'
+        ? a.distance_m - b.distance_m
+        : b.distance_m - a.distance_m
+    );
   }
-  return items;
+  return sorted;
 }
 
 export default function NearbyList({
@@ -37,9 +48,19 @@ export default function NearbyList({
   selectedId,
 }) {
   const [sortBy, setSortBy] = useState('distance');
+  const [dir, setDir] = useState('asc');
 
-  const sortedTier1 = sortItems(tier1, sortBy);
-  const sortedTier2 = sortItems(tier2.items, sortBy);
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setDir(field === 'distance' ? 'asc' : 'desc');
+    }
+  };
+
+  const sortedTier1 = sortItems(tier1, sortBy, dir);
+  const sortedTier2 = sortItems(tier2.items, sortBy, dir);
 
   const isEmpty = tier1.length === 0 && tier2.items.length === 0;
 
@@ -47,8 +68,8 @@ export default function NearbyList({
     return (
       <p className="text-sm text-slate-500">
         {noPatternsAtAll
-          ? 'Không tìm thấy nơi nào trong bán kính này.'
-          : 'Không có nơi nào trong bán kính. Thử mở rộng.'}
+          ? 'No places found in this radius.'
+          : 'No places in radius. Try expanding.'}
       </p>
     );
   }
@@ -56,31 +77,31 @@ export default function NearbyList({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-end gap-2 text-xs">
-        <span className="text-slate-500">Sắp xếp:</span>
+        <span className="text-slate-500">Sort:</span>
         <button
           type="button"
-          onClick={() => setSortBy('distance')}
+          onClick={() => handleSort('distance')}
           className={`rounded px-2 py-0.5 ${
             sortBy === 'distance' ? 'bg-slate-700 text-slate-200' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Khoảng cách
+          Distance {sortBy === 'distance' && (dir === 'asc' ? '↑' : '↓')}
         </button>
         <button
           type="button"
-          onClick={() => setSortBy('rating')}
+          onClick={() => handleSort('rating')}
           className={`rounded px-2 py-0.5 ${
             sortBy === 'rating' ? 'bg-slate-700 text-slate-200' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Đánh giá
+          Rating {sortBy === 'rating' && (dir === 'asc' ? '↑' : '↓')}
         </button>
       </div>
 
       {sortedTier1.length > 0 && (
         <div className="rounded-lg border border-sky-800/50 bg-slate-800/60 p-3">
           <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-sky-400">
-            Nơi đồng vị
+            Co-located places
           </h4>
           <ul className="space-y-1">
             {sortedTier1.map((poi) => (
@@ -99,7 +120,7 @@ export default function NearbyList({
       {sortedTier2.length > 0 && (
         <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
           <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
-            Nơi khác gần đây
+            Other nearby
           </h4>
           <ul className="space-y-1">
             {sortedTier2.map((poi) => (
@@ -114,7 +135,7 @@ export default function NearbyList({
           </ul>
           {tier2.total > tier2.items.length && (
             <p className="mt-2 text-xs text-slate-500">
-              Đang hiện {tier2.items.length}/{tier2.total} — mở rộng bán kính để xem thêm.
+              Showing {tier2.items.length}/{tier2.total} — expand radius to see more.
             </p>
           )}
         </div>
