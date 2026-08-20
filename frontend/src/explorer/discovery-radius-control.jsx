@@ -2,9 +2,8 @@ import { RADIUS_MAX_M } from '../utils/map-helpers';
 
 export const RADIUS_MIN_M = 20;
 
-export default function DiscoveryRadiusControl({ radiusM, epsM, onChange, disabled }) {
+export default function DiscoveryRadiusControl({ radiusM, onChange, disabled }) {
   const max = RADIUS_MAX_M;
-  const roundedEps = Math.round(epsM || 0);
   const roundedRadius = Math.round(radiusM);
   return (
     <div className="space-y-1">
