@@ -109,7 +109,7 @@
 \newcommand{\minprev}{\mathit{minprev}}
 
 \theoremstyle{definition}
-\newtheorem{definition}{Definition}[section]
+\newtheorem{definition}{Definition}
 \newtheorem{property}[definition]{Property}
 \newtheorem{remark}[definition]{Remark}
 
@@ -230,7 +230,7 @@ The authors confirm their contribution to the thesis as follows:
 
 \textbf{Abstract}
 
-Spatial Co-location Pattern (SCP) mining seeks to uncover subsets of spatial features whose instances frequently appear in geographic proximity. A fundamental bottleneck in traditional evaluation metrics, such as the Participation Index ($PI$), is their severe bias against rare features in imbalanced datasets, causing meaningful associations to be prematurely pruned. While rarity-aware metrics like the Gaussian Weighted Participation Index ($WPI$) attempt to compensate for feature frequency disparities, they suffer from critical mathematical flaws: weight explosion under extreme imbalance and insufficient sensitivity under moderate disparity. To address these challenges, this thesis proposes a Cauchy distribution-based weighting framework, introducing the Cauchy Weighted Participation Index ($WPI_C$) to achieve stable and proportionate rarity compensation with a quadratic growth rate. To ensure computational scalability, this thesis integrates $WPI_C$ into an optimized hybrid mining framework that combines Maximal Clique Enumeration with a Hash Table-based instance query strategy. Furthermore, this thesis bridges spatial pattern mining with real-world applications by incorporating discovered spatial co-location patterns as contextual signals into Point-of-Interest (POI) re-ranking. Extensive empirical evaluations across several real-world datasets - Las Vegas, Toronto, Shanghai, Beijing and Philadelphia - demonstrate that our thesis framework mitigates numerical instability, discovers rare co-locations, and consistently outperforms existing baselines in execution speed, memory efficiency, and POI re-ranking performance.
+Spatial Co-location Pattern (SCP) mining seeks to uncover subsets of spatial features whose instances frequently appear in geographic proximity. A fundamental bottleneck in traditional evaluation metrics, such as the Participation Index ($PI$), is their severe bias against rare features in imbalanced datasets, causing meaningful associations to be prematurely pruned. While rarity-aware metrics like the Gaussian Weighted Participation Index ($WPI$) attempt to compensate for feature frequency disparities, they suffer from critical mathematical flaws: weight explosion under extreme imbalance and insufficient sensitivity under moderate disparity. To address these challenges, this thesis proposes a Cauchy distribution-based weighting framework, introducing the Cauchy Weighted Participation Index ($WPI_C$) to achieve stable and proportionate rarity compensation with a quadratic growth rate. To ensure computational scalability, this thesis integrates $WPI_C$ into an optimized hybrid mining framework that combines Maximal Clique Enumeration with a Hash Table-based instance query strategy. Furthermore, this thesis bridges spatial pattern mining with real-world applications by incorporating discovered spatial co-location patterns as contextual signals into Point-of-Interest (POI) re-ranking. Extensive empirical evaluations across several real-world datasets - Las Vegas, Toronto, Shanghai, Beijing and Philadelphia - demonstrate that our thesis framework mitigates numerical instability, discovers rare co-locations, and consistently improve existing baselines in execution speed, memory efficiency, and POI re-ranking performance.
 
 \noindent\textbf{Keywords:} Spatial Co-location Pattern, Rare Features, Cauchy Distribution, Maximal Clique, POI Recommendation.
 \clearpage
@@ -266,13 +266,13 @@ In this thesis, we address these limitations by introducing a robust Cauchy dist
 
 1. We propose a Cauchy distribution-based rare-feature weighting framework, define a Cauchy Rare Intensity factor, and develop the Cauchy Weighted Participation Index (${WPI}_{C}$) for robust prevalence evaluation in SCP mining. This design addresses two main limitations of exponential weighting: weight explosion under severe imbalance and weak compensation under moderate imbalance.
 
-2. We incorporate the proposed prevalence measure into a clique--hash-table-based SCP mining pipeline. The pipeline uses MCEHybrid algorithm which is a hybrid Bron--Kerbosch-style maximal clique enumeration strategy between BK pivot and BK rcd, following prior graph mining studies \cite{bron1973algorithm,li2019fast}, to support efficient pattern discovery.
+2. We incorporate the proposed prevalence measure into a clique-hash-table-based SCP mining pipeline. The pipeline uses the MCEHybrid algorithm, which is a hybrid Bron-Kerbosch-style maximal clique enumeration strategy between BK pivot and BK rcd, following prior graph mining studies \cite{bron1973algorithm,li2019fast}, to support efficient pattern discovery.
 
 3. We evaluate the proposed method on several real-world datasets and compare it with existing baselines in terms of discovery effectiveness, numerical stability, and performance under highly imbalanced feature-frequency distributions.
 
 \section{Related Work}
 
-\subsection{Spatial Co-location Pattern Mining Algorithms and Rarity Measures}
+\subsection{Prevalence Metrics and Rarity Measures}
 
 Finding co-locations has grown in importance as a research topic and has been thoroughly examined. There are two primary types of methods for finding co-locations: data mining-based methods and statistics-based methods. Statistics-based methods define correlations between different features using statistical techniques (e.g., cross-K function with Monte Carlo simulation) \cite{barua2013mining, cai2018adaptive}. However, because the number of potential patterns increases exponentially, statistics-based approaches are computationally costly. Data mining-based methods have garnered a lot of interest due to their tremendous computational efficiency. Shekhar and Huang \cite{huang2004discovering, shekhar2001discovering} introduced SCPM. In their study, an Apriori-like join-based method was developed to find co-locations, and the participation index was defined to assess co-location prevalence. A number of enhanced algorithms were then introduced, including the CPI-tree approach \cite{wang2008investigation}, the join-less approach \cite{yoo2006joinless}, and the partial-join approach \cite{yoo2004partial}. Additionally, GPU-based \cite{andrzejewski2015parallel} and MapReduce-based \cite{yang2018parallel,yang2018parallel2} parallel methods were created for handling large amounts of spatial data.
 
@@ -282,7 +282,7 @@ Some co-locations containing rare features are overlooked because the aforementi
 
 Recent research developed the Weighted Participation Index ($\mathrm{WPI}$) \cite{yang2021efficient} to account for feature-frequency differences without depending on strict thresholds. In order to balance uncommon and frequent spatial features, $\mathrm{WPI}$ dynamically assigns relative weights using a Gaussian kernel function based on the frequency disparity ratio $v$. The exponential formulation of the Gaussian weighting mechanism ($w \propto \exp(v^2)$), however, shows significant mathematical constraints in large-scale spatial datasets despite its conceptual design. In particular, the exponential weight increases quickly under severe feature frequency imbalances where $v$ is large, potentially causing numerical instability and over-amplifying very small participation ratios. On the other hand, the Gaussian weight stays at $1.0$ under moderate feature imbalances, offering essentially no weight adjustment. As a result, in moderately unbalanced settings, $\mathrm{WPI}$ is unable to provide sufficient compensation, which can easily result in the removal of significant unusual co-location patterns.
 
-\subsection{Spatial Pattern Mining Paradigms and Candidate Search Strategies}
+\subsection{Search Paradigms and Mining Algorithms}
 
 A \textbf{clique} is a complete subgraph of an undirected graph $G$, that is, a subgraph in which any two vertices are contiguous.One of the core issues in graph theory is the generation of maximal cliques of a given graph, which has a variety of applications in social network research, bioinformatics, clustering, and spatial pattern recognition. \cite{du2007community, grindley1993identification}. The classical Bron--Kerbosch (BK) algorithm \cite{bron1973algorithm}, a depth-first search procedure that recursively solves subproblems specified by three sets of vertices - nthe vertices that must be included in a partial clique, the vertices that must be excluded from the clique, and some remaining vertices whose status still needs to be determined - is the basis for the majority of current algorithms for maximal clique enumeration (MCE). However, general-purpose algorithms for listing maximal cliques necessarily take exponential time, with a total computing time proportional to $O(3^{n/3})$ for Moon--Moser graphs of $n$ vertices \cite{moon1965cliques}. Additionally, because of the severe search space explosion during recursive traversals, the Bron--Kerbosch algorithm and other algorithms that produce maximal cliques in a straightforward manner demand enormous amounts of memory space \cite{johnston1976cliques, cazals2008note}.
 
@@ -300,7 +300,7 @@ Our approach leverages a Cauchy distribution-based interest measure ($WPI_C$) to
 
 A spatial dataset, denoted as $\mathcal{O}$, comprises a finite collection of spatial objects. Each object $x \in \mathcal{O}$ is characterized by a specific feature type $\tau \in \mathcal{T}$ and a geographical coordinate $\mathbf{s}(x)$, where $\mathcal{T}=\{\tau_1,\tau_2,\ldots,\tau_m\}$ represents the universal set of distinct features. The subset of objects belonging to a specific feature $\tau$ is denoted by $\mathcal{O}_{\tau}$, with its cardinality given by $\text{cnt}(\tau)=|\mathcal{O}_{\tau}|$. 
 
-For instance, as illustrated in Figure \ref{fig:spatial_network}, a synthetic spatial dataset consists of 17 spatial objects belonging to five feature categories ($\mathcal{T} = \{A, B, C, D, R\}$): features $A$ and $B$ with 5 instances each, features $C$ and $D$ with 3 instances each, and a strictly rare feature $R$ with only 1 instance. Here, the feature cardinalities are $\text{cnt}(A) = 5$, $\text{cnt}(B) = 5$, $\text{cnt}(C) = 3$, $\text{cnt}(D) = 3$, and $\text{cnt}(R) = 1$.
+For instance, as illustrated in Figure \ref{fig:spatial_network}, a synthetic spatial dataset consists of 17 spatial objects belonging to five feature categories ($\mathcal{T} = \{\mathrm{A}, \mathrm{B}, \mathrm{C}, \mathrm{D}, \mathrm{R}\}$): features $\mathrm{A}$ and $\mathrm{B}$ with 5 instances each, features $\mathrm{C}$ and $\mathrm{D}$ with 3 instances each, and a strictly rare feature $\mathrm{R}$ with only 1 instance. Here, the feature cardinalities are $\text{cnt}(\mathrm{A}) = 5$, $\text{cnt}(\mathrm{B}) = 5$, $\text{cnt}(\mathrm{C}) = 3$, $\text{cnt}(\mathrm{D}) = 3$, and $\text{cnt}(\mathrm{R}) = 1$.
 
 \begin{figure}[htbp]
     \centering
@@ -407,8 +407,7 @@ instances efficiently. This section answers that question by presenting \textbf{
 the mining pipeline designed in this project.
 
 % ---------------------------------------------------------------------
-\subsubsection{Algorithmic Motivation and Pipeline Overview}
-\label{subsec:mcr_overview}
+\noindent\textbf{Algorithmic Motivation and Pipeline Overview}
 
 \noindent\textbf{Why a level-wise strategy is not applicable.}
 Traditional co-location mining algorithms such as the join-based or joinless approaches
@@ -470,7 +469,7 @@ MCR decomposes the mining task into four stages, executed once each and in seque
 % ---------------------------------------------------------------------
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{figures/mcr_pipeline.pdf}
+    \includegraphics[width=0.6\textwidth]{figures/mcr_pipeline.pdf}
     \caption{Overview of the four-stage MCR mining pipeline.}
     \label{fig:mcr_pipeline}
 \end{figure}
@@ -478,8 +477,11 @@ MCR decomposes the mining task into four stages, executed once each and in seque
 Each stage is detailed in the following subsections.
 
 % ---------------------------------------------------------------------
-\subsubsection{The MCR Pipeline Stages}
+\vspace{2ex}
+
+\noindent\textbf{The MCR Pipeline Stages}
 \label{subsec:mcr_pipeline}
+\vspace{-2.5ex}
 
 \paragraph{Stage 1: Feature Statistics and Rarity Preparation.}
 \label{subsec:mcr_feature_stats}
@@ -534,9 +536,13 @@ eight surrounding cells, each instance is compared only against the contents of 
 $3\times3$ cell neighbourhood. Under a roughly uniform spatial distribution, this reduces the
 expected cost to $O(n \cdot \bar{c})$, where $\bar{c}$ is the average number of instances per
 cell neighbourhood. The resulting graph is stored as an adjacency list with the size of $O(|E|)$.
+The grid itself is constructed in a single linear pass over $\mathcal{O}$ and requires only
+$O(n)$ additional memory to store the cell-to-instance mapping. This spatial index is built once
+and then reused for every neighbourhood query, so its construction cost is amortised across the
+entire materialisation. In practice, the grid-based scheme therefore scales close to linearly with
+the number of instances whenever the data are not pathologically clustered.
 
 % ---------------------------------------------------------------------
-\newpage
 \paragraph{Stage 3: Maximal Clique Enumeration and Indexing.}
 \label{subsec:mcr_mce}
 
@@ -566,6 +572,7 @@ bijection, and $|\lambda(cl)| = |cl|$.
 \end{lemma}
 
 \begin{proof}
+\renewcommand{\qedsymbol}{}
 By definition $S$ is a set of pairwise neighbouring instances, hence a clique of $G$. Any
 clique of a finite graph can be extended by repeatedly adding adjacent vertices until no
 further extension is possible; the resulting set is a maximal clique $cl \supseteq S$.
@@ -595,7 +602,6 @@ combines the $BK_{rcd}$ and $BK_{pivot}$ variants of the Bron--Kerbosch scheme. 
 behaviour of this component determines the cost of Stage~2, its mechanics are summarised
 below.
 
-\newpage
 \noindent\textbf{The Bron--Kerbosch scheme.}
 The classical Bron--Kerbosch algorithm~\cite{bron1973algorithm} performs a recursive
 backtracking search maintaining three disjoint vertex sets:
@@ -671,7 +677,7 @@ single graph.
 % ---------------------------------------------------------------------
 
 \noindent\textbf{Illustration.}
-To demonstrate Definition~3.1, consider the synetic spatial dataset of
+To demonstrate Definition 1, consider the synetic spatial dataset of
 Fig.~\ref{fig:spatial_network}. Once the neighbourhood relationships among the
 instances have been materialised as described in
 Section~\ref{sec:stage1}, the underlying structure is captured by the
@@ -843,6 +849,7 @@ satisfies $WPI_C(q) \ge WPI_C(p) \ge min\_prev$, and is therefore prevalent.
 \end{lemma}
 
 \begin{proof}
+\renewcommand{\qedsymbol}{}
 Three observations combine to give the result.
 
 \emph{(i) The weights are unchanged.} Since $q \subseteq p$ and
@@ -863,7 +870,7 @@ is therefore a co-location instance in $\mathcal{I}(q)$. Hence every object
 participating in $p$ also participates in $q$, giving
 $\mathcal{O}_\tau^{p} \subseteq \mathcal{O}_\tau^{q}$ and thus
 $PR(\tau \mid q) \ge PR(\tau \mid p)$ for all $\tau \in q$.
-
+\newpage
 \emph{(iii) The minimum is taken over fewer terms.} Combining (i) and (ii),
 $WPR_C(\tau \mid q) \ge WPR_C(\tau \mid p)$ for every $\tau \in q$. Since
 $q \subseteq p$,
@@ -893,6 +900,7 @@ subsets from the queue loses no pattern.
 \end{lemma}
 
 \begin{proof}
+\renewcommand{\qedsymbol}{}
 Consider any subset of a confirmed pattern $p$. If it contains
 $\tau_{\min}(p)$, it is inferred directly by
 Lemma~\ref{lem:inference}. Otherwise it is a subset of
@@ -904,7 +912,7 @@ that MCR examines every potentially prevalent pattern.
 \end{proof}
 
 % ---------------------------------------------------------------------
-\subsubsection{The MCR Algorithm}
+\noindent\textbf{The MCR Algorithm}
 \label{subsec:mcr_algorithm}
 
 Table~\ref{tab:notation_mcr} summarises the notation used in the pseudo-code, and
@@ -1010,7 +1018,7 @@ subsequent processing (lines 23--25). When the queue is exhausted, $SCPs$ contai
 complete set of discovered rare-feature co-location patterns and is returned (line 29).
 
 % ---------------------------------------------------------------------
-\subsubsection{An Illustrative Walkthrough}
+\noindent\textbf{An Illustrative Walkthrough}
 \label{subsec:mcr_example}
 
 This subsection traces MCR on the synthetic dataset of Fig.~\ref{fig:spatial_network},
@@ -1111,7 +1119,7 @@ their own once evaluated directly.
 \end{table}
 
 % ---------------------------------------------------------------------
-\subsubsection{Complexity Analysis}
+\noindent\textbf{Complexity Analysis}
 \label{subsec:mcr_complexity}
 
 Let $n = |\mathcal{O}|$ be the number of instances, $m = |\mathcal{T}|$ the number of
@@ -1816,41 +1824,47 @@ between-run variability.
 
 \FloatBarrier
 
-
 % ---------------------------------------------------------------------
 \section{Software}\label{sec:software}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{figures/software_ui.png}
+  \caption{The Co-located Spot Explorer.}
+  \label{fig:software}
+\end{figure}
 
 To demonstrate how the proposed mining framework can support a real
 location-based application, we implemented an interactive web application, the
 \emph{Co-located Spot Explorer}. The application runs the same C++ mining engine
 described in Section~\ref{methodology}---the Cauchy Weighted Participation Index
 ($WPI_C$) together with the maximal-clique enumeration and hash-based instance
-query---so that what the user sees is produced by the algorithm evaluated in this
-thesis, not by a re-implementation or an approximation.
+query, so that what the user sees is produced by the algorithm evaluated in this
+thesis, not by a re-implementation or an approximation. Its purpose is to make
+the co-location regularities the method discovers directly visible and
+explorable: for any place on the map, the user sees which kinds of venues tend to
+cluster around it, including the distinctive, comparatively rare categories that
+the Cauchy weighting preserves.
+
 
 Figure~\ref{fig:software} shows the interface. The user selects one of the
 downstream Yelp datasets (Philadelphia or New Orleans), sets a neighbour distance
-and a popularity threshold, and runs the co-location search. The discovered
-patterns are then explored spatially: clicking any point of interest on the map
-highlights the venues that are co-located with it, each shown with its distance
-from the selected place and its user rating. In the example, the places
-co-located with a selected seafood restaurant in Philadelphia are listed on the
-left, ordered by distance, while the surrounding neighbourhood and the search
-radius are drawn on the map.
+and a popularity threshold, and runs the co-location search. The patterns are then
+explored spatially: clicking any point on the map highlights the co-located venues,
+each shown with its distance and user rating. In the example, the places co-located
+with a selected seafood restaurant in Philadelphia are listed on the left by
+distance, while the neighbourhood and search radius are drawn on the map. The
+panel distinguishes venues that actually participate in a co-location with the
+selected place from other venues that merely fall within the radius; because
+co-location is defined between specific instances rather than entire categories,
+a category may appear in both groups---some of its venues co-locate with the
+selected place while others are only nearby.
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\linewidth]{figures/software_ui.png}
-  \caption{The Co-located Spot Explorer. After running the co-location search on
-  a city, the user clicks a point of interest to see the categories of venues
-  that co-locate around it, ranked by distance and annotated with ratings.}
-  \label{fig:software}
-\end{figure}
 
 \noindent\textbf{Application to POI recommendation.} In this application, the
-mined co-location patterns act as contextual signals for point-of-interest
+mined co-location patterns act as signals for point-of-interest
 recommendation. Rather than ranking venues in isolation, the system uses the
-co-location relationships discovered by $WPI_C$ to answer a location-centred
+co-location relationships discovered by $WPI_C$ to answer a location-centered
 question: given a place the user is currently interested in, which categories of
 nearby venues tend to occur together with it? Because $WPI_C$ preserves patterns
 that involve rare feature types, the results can surface distinctive co-located
@@ -1858,7 +1872,6 @@ categories that a frequency-biased measure would prune. Consistent with the
 framing used throughout this thesis, the prototype is intended as a demonstration
 of how spatial co-location patterns translate into a usable POI-exploration tool,
 rather than as a separately evaluated recommendation model.
-
 
 % ---------------------------------------------------------------------
 \section{Conclusion and Future Work}\label{con}
