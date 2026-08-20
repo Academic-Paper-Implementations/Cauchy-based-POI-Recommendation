@@ -6,13 +6,13 @@ real miner, and click any point on an OpenStreetMap view to see which prevalent
 patterns it participates in and which neighbours it forms them with.
 
 There is one mining implementation in this repository: the C++ engine under
-`server/engine/`. Nothing is recomputed in JavaScript or approximated in Python.
+`backend/engine/`. Nothing is recomputed in JavaScript or approximated in Python.
 
 ## What it does
 
 - **Real mining.** Maximal-clique hash-map enumeration, Cauchy rare-feature
   weighting, weighted participation index — the sequential engine from the
-  thesis, vendored and documented in `server/engine/PROVENANCE.md`.
+  thesis, vendored and documented in `backend/engine/PROVENANCE.md`.
 - **Jobs, not requests.** Mining runs as a cancellable background job that
   reports the stage it has reached. Finished results are cached on disk by
   `(dataset, ε, min prevalence, sample %)` and survive a restart.
@@ -54,7 +54,7 @@ mined ε (co-located groups cannot exist beyond it), is never sent to the miner,
 and never triggers a re-mine.
 
 **Datasets.** The Explorer uses two packaged cuisine datasets (see the table
-below and `server/data/README.md` for how to regenerate them). Attributes
+below and `backend/data/README.md` for how to regenerate them). Attributes
 (price, takeout, hours, …) are display-only and never enter mining; a missing
 attribute is shown as unknown, never as "No"; permanently-closed places are hidden.
 
@@ -69,17 +69,17 @@ evaluation code ships yet, and the baseline is deliberately undecided.
 Requires Node 20+, Python 3.10+, and a C++17 compiler.
 
 ```bash
-# 1. Build the miner
-mkdir -p server/engine/bin
-g++ -O2 -std=c++17 server/engine/src/*.cpp -Iserver/engine/include \
-    -o server/engine/bin/colocation_miner        # add .exe on Windows
+# 1. Build the miner (from the repo root)
+mkdir -p backend/engine/bin
+g++ -O2 -std=c++17 backend/engine/src/*.cpp -Ibackend/engine/include \
+    -o backend/engine/bin/colocation_miner        # add .exe on Windows
 
 # 2. Install dependencies
-npm install
-python -m venv .venv && .venv/bin/pip install -r server/requirements.txt
+(cd frontend && npm install)                       # Node app lives in frontend/
+python -m venv .venv && .venv/bin/pip install -r backend/requirements.txt
 
 # 3. Run both (Vite proxies /api to the API)
-npm run dev:all
+cd frontend && npm run dev:all                     # dev:all lives in frontend/
 # research app http://localhost:5173/ · Explorer http://localhost:5173/explorer.html
 # API http://localhost:8000
 ```
@@ -87,8 +87,8 @@ npm run dev:all
 Single-process production run:
 
 ```bash
-npm run build
-python -m uvicorn server.main:app --host 0.0.0.0 --port 8000
+(cd frontend && npm run build)          # emits frontend/dist
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000   # from repo root
 # everything on http://localhost:8000
 ```
 
@@ -96,12 +96,12 @@ python -m uvicorn server.main:app --host 0.0.0.0 --port 8000
 
 ```bash
 docker build -t colocation-app .
-docker run -p 8000:8000 -v colocation-cache:/app/server/runtime colocation-app
+docker run -p 8000:8000 -v colocation-cache:/app/backend/runtime colocation-app
 ```
 
 The image builds the SPA, compiles the miner, and serves both from port 8000.
 
-**Mount the volume.** `/app/server/runtime` holds prepared datasets and the
+**Mount the volume.** `/app/backend/runtime` holds prepared datasets and the
 mining result cache. A single run can take minutes; without the volume every
 container restart throws those results away.
 
@@ -116,7 +116,7 @@ container restart throws those results away.
 
 Toronto pins the engine's numbers: ε = 120 m, min prevalence = 0.2 must give
 κ = 7.8580 and **647** patterns with sizes `{2:108, 3:214, 4:202, 5:97, 6:24, 7:2}`.
-See `server/data/README.md` for how each is located.
+See `backend/data/README.md` for how each is located.
 
 ## Controls, and what they cost
 
@@ -150,7 +150,7 @@ about 44 s (21 s cliques, 19 s mining).
 
 **Clique core upgraded to Fast-BK (2026-08-19).** The maximal-clique enumeration
 is now the Fast-BK hybrid (degeneracy ordering + a BK-RCD / BK-Pivot switch; see
-`server/engine/PROVENANCE.md` item 8). The mined patterns are unchanged — the raw
+`backend/engine/PROVENANCE.md` item 8). The mined patterns are unchanged — the raw
 clique set was proven byte-for-byte identical to the old BK-Pivot on Toronto,
 Philadelphia, Philadelphia-cuisine and New Orleans plus a synthetic graph, and
 Toronto still gives κ = 7.8580 with 647 patterns. The table above is the original
@@ -206,10 +206,10 @@ recommendations p95 2.6 ms and 5.2 ms.
 ## Tests
 
 ```bash
-.venv/bin/pip install -r server/requirements-dev.txt
-.venv/bin/python -m pytest server/tests
-npm test
-npm run lint
+.venv/bin/pip install -r backend/requirements-dev.txt
+.venv/bin/python -m pytest backend/tests          # from repo root
+(cd frontend && npm test)
+(cd frontend && npm run lint)
 ```
 
 The Python suite covers identity mapping through the miner CSV, BOM-free config
@@ -227,7 +227,7 @@ tripwire that fails the build on any next-POI prediction wording.
 ## Layout
 
 ```
-server/
+backend/               Python FastAPI app + vendored C++ miner
   main.py            FastAPI app: datasets, jobs, results, uploads, SPA mount
   datasets.py        registry, miner CSV conversion, identity mapping
   mining_job.py      job lifecycle, subprocess, disk cache, cancellation
@@ -237,12 +237,19 @@ server/
   upload.py          CSV validation and local projection
   extract/           build the packaged cuisine datasets from raw Yelp business.json
   engine/            vendored C++ miner (see PROVENANCE.md)
-index.html           research app entry
-explorer.html        Explorer app entry (separate page, same backend)
-src/
-  App.jsx            research app: map, controls, job, both view modes
-  explorer/          Explorer app: city search, click-POI groups, popup, view radius
-  hooks/             use-mining-job: submit, poll, result, rare threshold
-  components/        leaflet-map (both CRS) and the mining/investor panels
-  utils/             feature colours, coordinate adapter for the two CRS
+  tests/             pytest suite
+frontend/              Vite + React app (all Node tooling: package.json, configs)
+  index.html         research app entry
+  explorer.html      Explorer app entry (separate page, same backend)
+  vercel.json        Vercel build config (set project Root Directory = frontend)
+  src/
+    App.jsx          research app: map, controls, job, both view modes
+    explorer/        Explorer app: city search, click-POI groups, popup, view radius
+    hooks/           use-mining-job: submit, poll, result, rare threshold
+    components/      leaflet-map (both CRS) and the mining/investor panels
+    utils/           feature colours, coordinate adapter for the two CRS
 ```
+
+**Deploying to Vercel:** the frontend is a static build. In the Vercel project
+settings, set **Root Directory = `frontend`** so Vercel runs `npm run build`
+there and serves `frontend/dist`.

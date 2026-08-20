@@ -7,8 +7,8 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from server import main, mining_job
-from server.tests.conftest import invocation_log
+from backend import main, mining_job
+from backend.tests.conftest import invocation_log
 
 
 @pytest.fixture
@@ -125,7 +125,7 @@ def test_instance_query_rejects_an_unknown_point(client):
 
 
 def test_result_of_an_unfinished_job_is_a_conflict(client, monkeypatch):
-    from server.tests.test_mining_job import extra_config_keys
+    from backend.tests.test_mining_job import extra_config_keys
 
     extra_config_keys(monkeypatch, hold_seconds=20)
     job_id = client.post(
@@ -203,7 +203,7 @@ def test_site_recommendations_are_cached_per_result_and_feature(client):
 
 
 def test_site_recommendations_of_an_unfinished_job_are_a_conflict(client, monkeypatch):
-    from server.tests.test_mining_job import extra_config_keys
+    from backend.tests.test_mining_job import extra_config_keys
 
     extra_config_keys(monkeypatch, hold_seconds=20)
     job_id = client.post(

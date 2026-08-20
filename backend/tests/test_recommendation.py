@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from server.datasets import ColumnMap, DatasetInfo, PreparedDataset
-from server.pattern_query import SpatialGrid
-from server.recommendation import (
+from backend.datasets import ColumnMap, DatasetInfo, PreparedDataset
+from backend.pattern_query import SpatialGrid
+from backend.recommendation import (
     MAX_FEATURES,
     CellPresence,
     FeatureBits,

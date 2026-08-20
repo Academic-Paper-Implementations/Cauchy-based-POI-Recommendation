@@ -9,11 +9,11 @@ __pycache__
 .pytest_cache
 
 # Generated at run time: prepared datasets, job workspaces, result cache
-server/runtime
+backend/runtime
 
 # Compiled locally; the image builds its own binary in the engine stage
-server/engine/bin
-server/engine/out
+backend/engine/bin
+backend/engine/out
 
 plans
 README_DEMO.md

@@ -6,8 +6,8 @@ import csv
 
 import pytest
 
-from server.datasets import ColumnMap, DatasetInfo, prepare
-from server.pattern_query import PatternIndex, SpatialGrid, query_instance
+from backend.datasets import ColumnMap, DatasetInfo, prepare
+from backend.pattern_query import PatternIndex, SpatialGrid, query_instance
 
 RESULT = {
     "feature_counts": {"Cafe": 2, "Bar": 1},
@@ -124,7 +124,7 @@ def test_neighbours_and_origin_carry_display_fields_when_mapped(tmp_path, monkey
                          "4.0", "80", "2", "true"])
         writer.writerow(["b-2", "Bar Two", "Bar", "39.96", "-75.17", "50.0", "0.0",
                          "4.5", "", "", ""])
-    monkeypatch.setattr("server.datasets.PREPARED_DIR", tmp_path / "prepared")
+    monkeypatch.setattr("backend.datasets.PREPARED_DIR", tmp_path / "prepared")
     dataset = prepare(DatasetInfo(
         id="attr", label="Attr", source=source,
         columns=ColumnMap(

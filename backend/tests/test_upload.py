@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from server.upload import (
+from backend.upload import (
     MAX_FEATURES,
     MAX_INSTANCES,
     UploadError,
@@ -43,7 +43,7 @@ def test_projection_preserves_distances_of_the_philadelphia_reference():
     """
     import csv
 
-    from server.datasets import _philadelphia_source
+    from backend.datasets import _philadelphia_source
 
     source = _philadelphia_source()
     if source is None:

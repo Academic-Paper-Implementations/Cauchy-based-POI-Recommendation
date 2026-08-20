@@ -6,8 +6,8 @@ import time
 
 import pytest
 
-from server import mining_job
-from server.mining_job import (
+from backend import mining_job
+from backend.mining_job import (
     JobParams,
     STATUS_CANCELLED,
     STATUS_DONE,
@@ -17,7 +17,7 @@ from server.mining_job import (
     cache_path,
     write_miner_config,
 )
-from server.tests.conftest import invocation_log
+from backend.tests.conftest import invocation_log
 
 PARAMS = JobParams(dataset_id="tiny", eps_m=120.0, min_prev=0.2, sample_pct=1.0)
 

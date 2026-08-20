@@ -268,8 +268,8 @@ class JobRunner:
             job.status = STATUS_FAILED
             job.error = (
                 f"miner binary not found at {binary}. Build it with: "
-                "g++ -O2 -std=c++17 server/engine/src/*.cpp -Iserver/engine/include "
-                "-o server/engine/bin/colocation_miner"
+                "g++ -O2 -std=c++17 backend/engine/src/*.cpp -Ibackend/engine/include "
+                "-o backend/engine/bin/colocation_miner"
             )
             job.finished_at = time.time()
             with self._lock:

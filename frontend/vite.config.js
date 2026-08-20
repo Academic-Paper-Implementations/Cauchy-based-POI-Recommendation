@@ -25,7 +25,7 @@ export default defineConfig({
     setupFiles: './src/test/setup.js',
     // Leaflet needs a real layout engine; the map is verified in a browser, not
     // here. Everything else in src/ is fair game.
-    exclude: ['node_modules/**', 'dist/**', 'server/**', '.venv/**'],
+    exclude: ['node_modules/**', 'dist/**', '.venv/**'],
   },
   server: {
     proxy: {

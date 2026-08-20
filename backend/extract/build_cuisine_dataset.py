@@ -17,8 +17,8 @@ serialised as an empty cell (later shown as "unknown"), never as "No".
 
 CLI::
 
-    python -m server.extract.build_cuisine_dataset --city all
-    python -m server.extract.build_cuisine_dataset --city philadelphia-cuisine
+    python -m backend.extract.build_cuisine_dataset --city all
+    python -m backend.extract.build_cuisine_dataset --city philadelphia-cuisine
 """
 from __future__ import annotations
 
@@ -30,11 +30,11 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from server.upload import project_local  # single canonical lat/lon -> metres projection
+from backend.upload import project_local  # single canonical lat/lon -> metres projection
 
 ROOT = Path(__file__).resolve().parents[2]  # spatial_web/
 BUSINESS_JSON = ROOT / "data" / "yelp_raw" / "yelp_academic_dataset_business.json"
-SERVER_DATA = ROOT / "server" / "data"
+SERVER_DATA = ROOT / "backend" / "data"
 
 BUDGET = 20  # Phase-1 locked feature budget (per city)
 FLOOR = 30   # min instances per feature (stabilises WPI/kappa; matches DEFAULT_MIN_COUNT)

@@ -1,18 +1,18 @@
 """FastAPI backend for the co-location mining explorer.
 
-Serves the JSON API and, in production, the built React app (``dist/``) from the
-same origin, so the whole app runs as a single process on a single port.
+Serves the JSON API and, in production, the built React app (``frontend/dist/``)
+from the same origin, so the whole app runs as a single process on a single port.
 
 Dev (two terminals, or ``npm run dev:all``):
-    python -m uvicorn server.main:app --reload --port 8000   # from spatial_web/
+    python -m uvicorn backend.main:app --reload --port 8000   # from spatial_web/
     npm run dev                                               # Vite proxies /api
 
 Production (single process):
     npm run build
-    python -m uvicorn server.main:app --host 0.0.0.0 --port 8000
+    python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
     # open http://localhost:8000
 
-The miner binary must be built first; see server/engine/PROVENANCE.md.
+The miner binary must be built first; see backend/engine/PROVENANCE.md.
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ from .recommendation import (
 from .upload import UploadError, parse_upload, store_upload
 
 ROOT = Path(__file__).resolve().parents[1]  # spatial_web/
-DIST_DIR = ROOT / "dist"
+DIST_DIR = ROOT / "frontend" / "dist"
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):

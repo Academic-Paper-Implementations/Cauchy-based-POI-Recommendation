@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from server.rare_labeling import label_rare, percentile, rare_threshold
+from backend.rare_labeling import label_rare, percentile, rare_threshold
 
 # The 20 Philadelphia category counts, as the miner reports them.
 PHILADELPHIA = {

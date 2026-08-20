@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "api": "python -m uvicorn server.main:app --reload --port 8000",
+    "api": "python -m uvicorn backend.main:app --reload --port 8000 --app-dir ..",
     "dev:all": "concurrently -k -n web,api -c cyan,green \"npm:dev\" \"npm:api\"",
     "build": "vite build",
-    "start": "python -m uvicorn server.main:app --host 0.0.0.0 --port 8000",
+    "start": "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --app-dir ..",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

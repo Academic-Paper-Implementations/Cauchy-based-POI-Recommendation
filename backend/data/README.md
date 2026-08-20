@@ -9,7 +9,7 @@ projected `X`/`Y` in metres, so it drives the OpenStreetMap view directly.
 Resolution order:
 
 1. env `PHILADELPHIA_INSTANCES`
-2. `server/data/philadelphia/spatial_instances.csv` (this folder)
+2. `backend/data/philadelphia/spatial_instances.csv` (this folder)
 3. dev fallback: `../POI_recommend/data/yelp/philadelphia/processed/spatial_instances.csv`
 
 Source: `POI_recommend/data/yelp/philadelphia/processed/spatial_instances.csv`.
@@ -32,14 +32,14 @@ Regenerate both from raw Yelp business data (business data only; no user/review
 data is copied into the repo):
 
 ```bash
-python -m server.extract.build_cuisine_dataset --city all
+python -m backend.extract.build_cuisine_dataset --city all
 # reads data/yelp_raw/yelp_academic_dataset_business.json
 ```
 
 Resolution order per city (e.g. Philadelphia cuisine):
 
 1. env `PHILADELPHIA_CUISINE_INSTANCES` / `NEW_ORLEANS_INSTANCES`
-2. `server/data/philadelphia-cuisine/spatial_instances.csv` / `server/data/new-orleans/…`
+2. `backend/data/philadelphia-cuisine/spatial_instances.csv` / `backend/data/new-orleans/…`
 
 After editing a source CSV or the extractor, re-run `pytest server/tests -k datasets`:
 the datasets share one attribute-column contract and registration fails loudly if a
@@ -55,7 +55,7 @@ It is **not** copied into this folder or into the Docker image. It is registered
 only when found, in this order:
 
 1. env `TORONTO_INSTANCES`
-2. `server/data/toronto/Toronto_x_y_alphabet_version_03.csv`
+2. `backend/data/toronto/Toronto_x_y_alphabet_version_03.csv`
 3. dev fallback: `../A-Joinless-Approach-for-Mining-Spatial-Colocation-Patterns/data/Toronto_x_y_alphabet_version_03.csv`
 
 ## Derived files

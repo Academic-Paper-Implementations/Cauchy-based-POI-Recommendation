@@ -6,7 +6,7 @@ import csv
 
 import pytest
 
-from server.datasets import ColumnMap, DatasetInfo, prepare
+from backend.datasets import ColumnMap, DatasetInfo, prepare
 
 
 @pytest.fixture
@@ -39,7 +39,7 @@ def info(source_csv):
 
 
 def test_numbering_restarts_per_feature_and_maps_back(info, monkeypatch, tmp_path):
-    monkeypatch.setattr("server.datasets.PREPARED_DIR", tmp_path / "prepared")
+    monkeypatch.setattr("backend.datasets.PREPARED_DIR", tmp_path / "prepared")
     dataset = prepare(info)
 
     index = dataset.index()
@@ -50,7 +50,7 @@ def test_numbering_restarts_per_feature_and_maps_back(info, monkeypatch, tmp_pat
 
 
 def test_miner_csv_has_the_shape_the_miner_expects(info, monkeypatch, tmp_path):
-    monkeypatch.setattr("server.datasets.PREPARED_DIR", tmp_path / "prepared")
+    monkeypatch.setattr("backend.datasets.PREPARED_DIR", tmp_path / "prepared")
     dataset = prepare(info)
 
     raw = dataset.miner_csv.read_bytes()
@@ -66,7 +66,7 @@ def test_miner_csv_has_the_shape_the_miner_expects(info, monkeypatch, tmp_path):
 
 
 def test_latlon_is_optional(info, monkeypatch, tmp_path, source_csv):
-    monkeypatch.setattr("server.datasets.PREPARED_DIR", tmp_path / "prepared")
+    monkeypatch.setattr("backend.datasets.PREPARED_DIR", tmp_path / "prepared")
     coordinates_only = DatasetInfo(
         id="fixture-xy",
         label="Fixture XY",
@@ -81,7 +81,7 @@ def test_latlon_is_optional(info, monkeypatch, tmp_path, source_csv):
 
 def test_display_fields_are_absent_unless_mapped(info, monkeypatch, tmp_path):
     """A dataset that maps no display columns keeps its exact record shape."""
-    monkeypatch.setattr("server.datasets.PREPARED_DIR", tmp_path / "prepared")
+    monkeypatch.setattr("backend.datasets.PREPARED_DIR", tmp_path / "prepared")
     record = prepare(info).instances[0]
     assert set(record) == {"feature", "number", "x", "y", "lat", "lon", "id"}
 
@@ -97,7 +97,7 @@ def test_display_fields_are_carried_and_typed_when_mapped(monkeypatch, tmp_path)
         writer.writerow(["b-1", "Cafe One", "Cafe", "10.0", "20.0",
                          "4.0", "80", "2", "true"])
         writer.writerow(["b-2", "Bar Two", "Bar", "30.0", "40.0", "4.5", "", "", ""])
-    monkeypatch.setattr("server.datasets.PREPARED_DIR", tmp_path / "prepared")
+    monkeypatch.setattr("backend.datasets.PREPARED_DIR", tmp_path / "prepared")
     dataset = prepare(DatasetInfo(
         id="attr", label="Attr", source=source,
         columns=ColumnMap(
@@ -116,7 +116,7 @@ def test_display_fields_are_carried_and_typed_when_mapped(monkeypatch, tmp_path)
 
 
 def test_missing_column_is_reported_by_name(info, monkeypatch, tmp_path, source_csv):
-    monkeypatch.setattr("server.datasets.PREPARED_DIR", tmp_path / "prepared")
+    monkeypatch.setattr("backend.datasets.PREPARED_DIR", tmp_path / "prepared")
     broken = DatasetInfo(
         id="broken",
         label="Broken",
@@ -128,7 +128,7 @@ def test_missing_column_is_reported_by_name(info, monkeypatch, tmp_path, source_
 
 
 def test_preparation_is_reused_until_the_source_changes(info, monkeypatch, tmp_path):
-    monkeypatch.setattr("server.datasets.PREPARED_DIR", tmp_path / "prepared")
+    monkeypatch.setattr("backend.datasets.PREPARED_DIR", tmp_path / "prepared")
     first = prepare(info)
     stamp = first.miner_csv.stat().st_mtime_ns
 

@@ -24,11 +24,11 @@ __pycache__/
 .pytest_cache/
 
 # Compiled C++ miner and its build tree
-server/engine/bin/
-server/engine/out/
+backend/engine/bin/
+backend/engine/out/
 
 # Mining job workspace: run configs, miner output, disk cache
-server/runtime/
+backend/runtime/
 
 # Editor directories and files
 .vscode/*

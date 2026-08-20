@@ -23,8 +23,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]  # spatial_web/
-SERVER_DATA = ROOT / "server" / "data"
-RUNTIME = Path(os.environ.get("MINING_RUNTIME_DIR") or (ROOT / "server" / "runtime"))
+SERVER_DATA = ROOT / "backend" / "data"
+RUNTIME = Path(os.environ.get("MINING_RUNTIME_DIR") or (ROOT / "backend" / "runtime"))
 PREPARED_DIR = RUNTIME / "datasets"
 
 # Sibling projects used as a development fallback when the data has not been

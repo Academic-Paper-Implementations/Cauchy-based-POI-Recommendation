@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from server.datasets import ColumnMap, DatasetInfo, prepare
+from backend.datasets import ColumnMap, DatasetInfo, prepare
 
 FAKE_MINER = textwrap.dedent(
     '''
@@ -95,7 +95,7 @@ def tiny_dataset(tmp_path, monkeypatch):
         writer.writerow(["b-2", "Bar", "39.96", "-75.17", "50.0", "0.0"])
         writer.writerow(["b-3", "Cafe", "39.97", "-75.18", "5000.0", "5000.0"])
 
-    monkeypatch.setattr("server.datasets.PREPARED_DIR", tmp_path / "prepared")
+    monkeypatch.setattr("backend.datasets.PREPARED_DIR", tmp_path / "prepared")
     return prepare(
         DatasetInfo(
             id="tiny",
@@ -112,7 +112,7 @@ def tiny_dataset(tmp_path, monkeypatch):
 @pytest.fixture
 def runner(tmp_path, monkeypatch, fake_miner):
     """A JobRunner writing into tmp_path, driving the stand-in miner."""
-    from server import mining_job
+    from backend import mining_job
 
     monkeypatch.setattr(mining_job, "CACHE_DIR", tmp_path / "cache")
     monkeypatch.setattr(mining_job, "JOBS_DIR", tmp_path / "jobs")
