@@ -56,7 +56,27 @@ the sequential algorithm, with no TBB dependency and no threading.
    half-written result.
 
 7. **`CMakeLists.txt`** — target renamed to `colocation_miner`, `Release` default,
-   resource-copy target dropped (there are no vendored resources to copy).
+   resource-copy target dropped (there are no vendored resources to copy). A
+   `diff_clique` test target was added (see item 8); it links sources under
+   `tests/` and is excluded from the product binary.
+
+8. **`src/maximal_clique_hashmap.cpp` — Fast-BK hybrid clique enumeration.**
+   The maximal-clique core was upgraded from plain Bron–Kerbosch with pivot to the
+   Fast-BK hybrid (degeneracy ordering + a per-subgraph switch between BK-RCD for
+   dense neighbourhoods and BK-Pivot for sparse ones). Ported from
+   `D:/01_learning/ai_ml/spatial_data_mining/Cauchy-and-Fast-BK-algorithm`
+   (`src/maximal_clique_hashmap.cpp`, commit `86bc929`, 2026-03-16; repo HEAD
+   `d87bb97`) on 2026-08-19. The header and every other engine source are unchanged,
+   so the paper's Cauchy rare-feature kernel (`utils.cpp`) and the WPI miner
+   (`miner.cpp`) are untouched — only the clique enumeration is faster. The output
+   is *identical*: the raw `executeBK()` maximal-clique set was proven byte-for-byte
+   equal to the previous BK-Pivot implementation on four datasets (Toronto, base
+   Philadelphia, Philadelphia-cuisine, New Orleans) plus a hand-verified synthetic
+   graph via the differential harness `tests/diff_clique.cpp`, which compares the new
+   enumerator against the preserved legacy oracle `tests/maximal_clique_hashmap_legacy.cpp`.
+   Toronto at ε=120 m still yields κ=7.8580 and 647 patterns with the same size
+   distribution. A `DIFF_CLIQUE_INSTRUMENT`-guarded counter in the clique source is
+   compiled out of the product binary and only used by the harness.
 
 ## Build
 

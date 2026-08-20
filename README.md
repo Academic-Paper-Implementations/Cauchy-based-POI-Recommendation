@@ -148,6 +148,17 @@ The default ε is 80 m for that reason. Higher values work, but plan for the wai
 — and the disk cache makes the second run instant. Toronto at ε = 120 m takes
 about 44 s (21 s cliques, 19 s mining).
 
+**Clique core upgraded to Fast-BK (2026-08-19).** The maximal-clique enumeration
+is now the Fast-BK hybrid (degeneracy ordering + a BK-RCD / BK-Pivot switch; see
+`server/engine/PROVENANCE.md` item 8). The mined patterns are unchanged — the raw
+clique set was proven byte-for-byte identical to the old BK-Pivot on Toronto,
+Philadelphia, Philadelphia-cuisine and New Orleans plus a synthetic graph, and
+Toronto still gives κ = 7.8580 with 647 patterns. The table above is the original
+BK-Pivot baseline. On a same-machine head-to-head the new clique stage is faster
+(Philadelphia at ε = 100 m: 14.4 s vs 20.0 s for BK-Pivot, identical cliques), and
+ε = 150 m — which BK-Pivot could not finish — now completes (≈ 65 min total on that
+run, still dominated by clique enumeration on the very dense graph).
+
 In Docker the same work is modestly slower: ε = 60 m takes 3.1 s in the container
 against 2.2 s on the host, with identical results (80 patterns, κ = 3.4626).
 

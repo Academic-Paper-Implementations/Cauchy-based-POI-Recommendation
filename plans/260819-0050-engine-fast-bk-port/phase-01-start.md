@@ -1,6 +1,6 @@
 ---
 title: "Phase 1: Port the clique core + preserve legacy"
-status: todo
+status: done
 priority: P1
 dependencies: []
 ---

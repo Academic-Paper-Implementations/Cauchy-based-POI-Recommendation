@@ -1,6 +1,6 @@
 ---
 title: "Phase 3: End-to-end validation & cleanup"
-status: todo
+status: done
 priority: P1
 dependencies: [2]
 ---

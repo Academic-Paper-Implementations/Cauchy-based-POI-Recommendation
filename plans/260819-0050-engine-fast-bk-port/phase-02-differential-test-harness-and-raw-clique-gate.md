@@ -1,6 +1,6 @@
 ---
 title: "Phase 2: Differential test harness & raw-clique gate"
-status: todo
+status: done
 priority: P1
 dependencies: [1]
 ---

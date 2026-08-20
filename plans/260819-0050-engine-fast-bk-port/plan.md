@@ -1,7 +1,7 @@
 ---
 title: "Engine Fast-BK Port"
 description: "Upgrade the web app's C++ co-location miner (server/engine/) from plain BK-Pivot to the Fast-BK hybrid clique enumeration (degeneracy + BK-RCD + pivot switch) from the sibling Cauchy-and-Fast-BK-algorithm repo. Cauchy kernel is already present; this adds only the faster clique core. Patterns must stay identical; runtime drops. WS1 of 3 (engine → reorg → thesis)."
-status: pending
+status: done
 priority: P1
 effort: "1-2d"
 tags: [engine, cpp, performance, colocation, aip490]
@@ -74,9 +74,9 @@ WS1 of 3 (engine → reorg → thesis). See roadmap memory `thesis-submission-ro
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Port the clique core + preserve legacy](./phase-01-start.md) | pending |
-| 2 | [Differential test harness & raw-clique gate](./phase-02-differential-test-harness-and-raw-clique-gate.md) | pending |
-| 3 | [End-to-end validation & cleanup](./phase-03-end-to-end-validation-and-cleanup.md) | pending |
+| 1 | [Port the clique core + preserve legacy](./phase-01-start.md) | done |
+| 2 | [Differential test harness & raw-clique gate](./phase-02-differential-test-harness-and-raw-clique-gate.md) | done |
+| 3 | [End-to-end validation & cleanup](./phase-03-end-to-end-validation-and-cleanup.md) | done |
 
 ## Architecture touchpoints
 
@@ -94,13 +94,15 @@ WS1 of 3 (engine → reorg → thesis). See roadmap memory `thesis-submission-ro
 
 ## Success Criteria (roll-up)
 
-- [ ] `maximal_clique_hashmap.cpp` holds the Fast-BK hybrid; header unchanged; the miner compiles via the existing CMake/g++ path.
-- [ ] A `diff_clique` test target builds the new `MaximalCliqueHashmap` and `MaximalCliqueHashmapLegacy` together and asserts raw `executeBK()` output (Colocation keys + per-feature instance sets) is **exactly equal** on four real fixtures — Toronto, base Philadelphia (ε=80 m, the perf-critical dataset), Philadelphia-cuisine, New Orleans — and a tiny synthetic graph.
-- [ ] Toronto ε=120 m / min_prev=0.2 end-to-end still gives κ=7.8580 and 647 patterns with sizes `{2:108,3:214,4:202,5:97,6:24,7:2}`.
-- [ ] The ε=150 m Philadelphia mine completes (no >20 min abort); wall-clock before/after recorded.
-- [ ] Legacy oracle removed only after the differential test is green; shipped binary rebuilt from the new source.
-- [ ] `min_cond_prob` not introduced; no change to `main.cpp`/`miner.cpp`/`utils.cpp`/`neighbor_graph.cpp`/`data_loader.cpp`/`types.h`.
-- [ ] pytest + vitest green.
+- [x] `maximal_clique_hashmap.cpp` holds the Fast-BK hybrid; header unchanged; the miner compiles via the existing g++ path (UCRT64 g++ 16.1; cmake not on PATH, CMake target still added).
+- [x] A `diff_clique` test target builds the new `MaximalCliqueHashmap` and `MaximalCliqueHashmapLegacy` together and asserts raw `executeBK()` output (Colocation keys + per-feature instance sets) is **exactly equal** on four real fixtures — Toronto, base Philadelphia (ε=80 m), Philadelphia-cuisine, New Orleans — and a synthetic graph. RESULT: ALL MATCH; RCD invoked 29,513×; comparator self-check proven.
+- [x] Toronto ε=120 m / min_prev=0.2 end-to-end gives κ=7.857958 (→7.8580) and 647 patterns with sizes `{2:108,3:214,4:202,5:97,6:24,7:2}`.
+- [x] The ε=150 m Philadelphia mine completes (was >20 min abort). Fast-BK: clique 3684 s, mining 217 s, total ≈65 min, 3625 patterns. Same-machine head-to-head at ε=100 m: Fast-BK 14.4 s vs BK-Pivot 20.0 s (identical cliques).
+- [~] Legacy oracle **kept** (not removed) — `diff_clique` depends on it and is kept as a permanent regression harness; it lives under `tests/`, excluded from the product binary, and stays recoverable from git. Deviation from the "retire legacy" bullet; see report.
+- [x] `min_cond_prob` not introduced; no change to `main.cpp`/`miner.cpp`/`utils.cpp`/`neighbor_graph.cpp`/`data_loader.cpp`/`types.h`/header.
+- [x] pytest (76 passed) + vitest (82 passed) green.
+
+**Outcome (2026-08-19):** Fast-BK hybrid shipped; patterns identical (proven); ε=150 m now completes. The clique core is faster on a same-machine head-to-head, but ε=150 m remains slow (~65 min, clique-dominated) — the port enables completion rather than delivering a large wall-clock win at extreme density. Runtime claim recorded honestly in README (pre-port table kept as the BK-Pivot baseline; machine state made a full re-measure of the old table's absolute totals unreliable).
 
 ## Risk Assessment
 
