@@ -3,7 +3,7 @@ FROM node:20-alpine AS web
 WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
-COPY frontend/index.html frontend/explorer.html frontend/vite.config.js frontend/postcss.config.js ./
+COPY frontend/index.html frontend/vite.config.js frontend/postcss.config.js ./
 COPY frontend/src ./src
 COPY frontend/public ./public
 RUN npm run build

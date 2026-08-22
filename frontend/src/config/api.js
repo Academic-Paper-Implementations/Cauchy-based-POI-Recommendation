@@ -66,25 +66,4 @@ export const api = {
       })}`,
       options
     ),
-
-  // Which features are worth adding at one point, and where one feature belongs.
-  // Both are derived from a finished result — neither re-runs the miner.
-  instanceRecommendations: (jobId, feature, number, { rarePercentile, rareMinCount }, options) =>
-    request(
-      `/api/jobs/${jobId}/instances/${encodeURIComponent(feature)}/${number}/recommendations?${query(
-        { rare_percentile: rarePercentile, rare_min_count: rareMinCount }
-      )}`,
-      options
-    ),
-
-  siteRecommendations: (jobId, feature, top, options) =>
-    request(
-      `/api/jobs/${jobId}/site-recommendations?${query({ feature, top })}`,
-      options
-    ),
-
-  uploadDataset: (formData) =>
-    request('/api/uploads', { method: 'POST', body: formData }),
-
-  clearCache: () => request('/api/cache', { method: 'DELETE' }),
 };
