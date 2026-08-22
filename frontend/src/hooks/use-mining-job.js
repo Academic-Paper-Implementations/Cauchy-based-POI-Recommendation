@@ -45,11 +45,18 @@ export function useMiningJob() {
     rareAbortRef.current = null;
   }, []);
 
-  const loadResult = useCallback(async (jobId, percentile) => {
-    const body = await api.result(jobId, {
-      rarePercentile: percentile,
-      rareMinCount: RARE_MIN_COUNT,
-    });
+  // The one guarded path that writes a result. Every load claims a fresh
+  // generation token and only the newest load may write, so a poll that finishes
+  // a job cannot overwrite a newer relabel from the slider, and a load from an
+  // abandoned job cannot land after reset(). Callers that can abort pass a signal.
+  const loadResult = useCallback(async (jobId, percentile, signal) => {
+    const token = (rareTokenRef.current += 1);
+    const body = await api.result(
+      jobId,
+      { rarePercentile: percentile, rareMinCount: RARE_MIN_COUNT },
+      signal ? { signal } : undefined
+    );
+    if (token !== rareTokenRef.current) return;
     setResult(body);
     setAppliedPercentile(percentile);
   }, []);
@@ -111,30 +118,16 @@ export function useMiningJob() {
 
     cancelPendingRare();
     rareTimerRef.current = setTimeout(() => {
-      // A request that has already been overtaken must not write its answer:
-      // aborting stops the work, and the token stops a response that raced past
-      // the abort from replacing a newer one.
-      const token = (rareTokenRef.current += 1);
+      // Abort stops the in-flight work; loadResult's generation token stops a
+      // response that raced past the abort from replacing a newer one.
       const controller = new AbortController();
       rareAbortRef.current = controller;
-
-      api
-        .result(
-          current.job_id,
-          { rarePercentile: value, rareMinCount: RARE_MIN_COUNT },
-          { signal: controller.signal }
-        )
-        .then((body) => {
-          if (token !== rareTokenRef.current) return;
-          setResult(body);
-          setAppliedPercentile(value);
-        })
-        .catch((error) => {
-          if (error.name === 'AbortError' || token !== rareTokenRef.current) return;
-          setJobError(error.message);
-        });
+      loadResult(current.job_id, value, controller.signal).catch((error) => {
+        if (error.name === 'AbortError') return;
+        setJobError(error.message);
+      });
     }, RARE_DEBOUNCE_MS);
-  }, [cancelPendingRare]);
+  }, [cancelPendingRare, loadResult]);
 
   /** Forget the current job — the dataset it was mined from is no longer selected. */
   const reset = useCallback(() => {

@@ -191,4 +191,42 @@ describe('rare threshold', () => {
     expect(hook.result.current.rarePercentile).toBe(45);
     expect(api.result).not.toHaveBeenCalled();
   });
+
+  it('a completing poll does not clobber a newer relabel', async () => {
+    // The poll that finishes a job loads its result on the same guarded path as
+    // the slider, so a slow poll-triggered load cannot overwrite a newer relabel.
+    api.job.mockResolvedValueOnce({ job_id: 'j1', status: 'done' });
+
+    let resolvePoll;
+    api.result
+      .mockImplementationOnce(
+        () => new Promise((resolve) => { resolvePoll = resolve; })
+      )
+      .mockResolvedValueOnce({ ...RESULT, pattern_count: 222 });
+
+    const hook = renderHook(() => useMiningJob());
+    await start(hook, { job_id: 'j1', status: 'running' });
+
+    // Poll ticks the job to done; its result load is issued but still pending.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(hook.result.current.result).toBeNull();
+
+    // A newer relabel from the slider resolves first and wins.
+    act(() => hook.result.current.changeRarePercentile(80));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+    expect(hook.result.current.result.pattern_count).toBe(222);
+    expect(hook.result.current.appliedPercentile).toBe(80);
+
+    // The poll's stale load finally answers — with the pre-drag threshold — and
+    // must be dropped, not written over the newer result.
+    await act(async () => {
+      resolvePoll({ ...RESULT, pattern_count: 111 });
+    });
+    expect(hook.result.current.result.pattern_count).toBe(222);
+    expect(hook.result.current.appliedPercentile).toBe(80);
+  });
 });
