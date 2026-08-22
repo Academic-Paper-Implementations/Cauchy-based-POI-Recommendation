@@ -31,16 +31,25 @@ class SpatialGrid:
     def _cell(self, x: float, y: float) -> tuple[int, int]:
         return (int(math.floor(x / self.cell_size)), int(math.floor(y / self.cell_size)))
 
-    def within(self, x: float, y: float, radius: float) -> list[tuple[dict, float]]:
-        """Instances within `radius`, each with its distance. Excludes the point itself."""
+    def within(
+        self, x: float, y: float, radius: float, exclude: dict | None = None
+    ) -> list[tuple[dict, float]]:
+        """Instances within `radius`, each with its distance.
+
+        `exclude` is skipped by object identity — the query point itself. A plain
+        distance == 0 test would also drop *other* instances that happen to share
+        the exact coordinates, silently losing co-locations, so identity is used.
+        """
         cx, cy = self._cell(x, y)
         span = int(math.ceil(radius / self.cell_size))
         found: list[tuple[dict, float]] = []
         for gx in range(cx - span, cx + span + 1):
             for gy in range(cy - span, cy + span + 1):
                 for inst in self.cells.get((gx, gy), ()):
+                    if inst is exclude:
+                        continue
                     distance = math.hypot(inst["x"] - x, inst["y"] - y)
-                    if distance <= radius and distance > 0.0:
+                    if distance <= radius:
                         found.append((inst, distance))
         return found
 
@@ -107,7 +116,7 @@ def query_instance(
     if origin is None:
         raise KeyError(f"{feature}{number}")
 
-    nearby = grid.within(origin["x"], origin["y"], eps_m)
+    nearby = grid.within(origin["x"], origin["y"], eps_m, exclude=origin)
 
     results = []
     for i in index.patterns_of(feature, number):

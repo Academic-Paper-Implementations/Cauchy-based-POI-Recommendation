@@ -154,11 +154,15 @@ def test_grid_finds_the_same_points_as_a_brute_force_scan(tiny_dataset):
     grid = SpatialGrid(tiny_dataset.instances, 60.0)
     origin = tiny_dataset.instances[0]
     found = {
-        (inst["feature"], inst["number"]) for inst, _ in grid.within(origin["x"], origin["y"], 60.0)
+        (inst["feature"], inst["number"])
+        for inst, _ in grid.within(origin["x"], origin["y"], 60.0, exclude=origin)
     }
+    # The query point is excluded by identity, not by distance == 0, so a distinct
+    # instance sharing origin's coordinates would still be found.
     expected = {
         (inst["feature"], inst["number"])
         for inst in tiny_dataset.instances
-        if 0.0 < ((inst["x"] - origin["x"]) ** 2 + (inst["y"] - origin["y"]) ** 2) ** 0.5 <= 60.0
+        if inst is not origin
+        and ((inst["x"] - origin["x"]) ** 2 + (inst["y"] - origin["y"]) ** 2) ** 0.5 <= 60.0
     }
     assert found == expected
