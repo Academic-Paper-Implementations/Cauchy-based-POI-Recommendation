@@ -179,6 +179,62 @@ def test_simultaneous_submits_leave_exactly_one_live_process(
     assert all(job.status != STATUS_RUNNING for job in started)
 
 
+def test_concurrent_cancel_and_submit_never_orphans_a_miner(
+    runner, tiny_dataset, monkeypatch, tmp_path
+):
+    """A DELETE cancelling the running job while a POST starts a new one must end
+    with exactly one tracked, killable miner — never an orphan the runner forgot.
+
+    Regression for the teardown race: cancel() now serialises on the same lock as
+    submit(), so the two can no longer interleave and null out each other's state.
+    """
+    import threading
+
+    extra_config_keys(monkeypatch, hold_seconds=20)
+
+    first = runner.submit(PARAMS, tiny_dataset)
+    assert wait_for(lambda: runner._process is not None)
+
+    barrier = threading.Barrier(2)
+    outcome: dict = {}
+
+    def do_cancel():
+        barrier.wait()
+        outcome["cancel"] = runner.cancel(first.id)
+
+    def do_submit():
+        other = JobParams(dataset_id="tiny", eps_m=250.0, min_prev=0.2, sample_pct=1.0)
+        barrier.wait()
+        outcome["submit"] = runner.submit(other, tiny_dataset)
+
+    threads = [threading.Thread(target=do_cancel), threading.Thread(target=do_submit)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+
+    submitted = outcome["submit"]
+    # Whatever the interleaving, the tracked state is self-consistent: at most one
+    # job runs, and if one does it is exactly the process the runner holds.
+    running = [job for job in (first, submitted) if job.status == STATUS_RUNNING]
+    assert len(running) <= 1, [first.status, submitted.status]
+    if running:
+        assert runner._current is running[0]
+        # The worker thread installs _process a beat after submit() returns; wait
+        # for it. A never-arriving process would mean the survivor was orphaned.
+        assert wait_for(lambda: runner._process is not None), "runner lost the running job's process"
+        assert runner._process.poll() is None
+
+    # Kill the survivor, then prove nothing is still touching the shared heartbeat:
+    # an orphaned (untracked) miner would keep advancing it after this.
+    runner.cancel_current()
+    heartbeat = tmp_path / "heartbeat"
+    assert wait_for(heartbeat.exists)
+    settled = heartbeat.stat().st_mtime_ns
+    time.sleep(1.0)
+    assert heartbeat.stat().st_mtime_ns == settled, "an orphaned process is still running"
+
+
 def test_shutdown_stops_the_running_child(runner, tiny_dataset, monkeypatch):
     extra_config_keys(monkeypatch, hold_seconds=20)
 

@@ -289,6 +289,15 @@ class JobRunner:
         return job
 
     def cancel(self, job_id: str) -> bool:
+        # Held for the whole method, exactly as submit() does. A DELETE that
+        # cancels the running job must not interleave with a POST that starts a
+        # new one: without this lock the teardown in cancel_current() could null
+        # _process/_current after the submit installed a new job, orphaning its
+        # miner with nothing able to stop it.
+        with self._submit_lock:
+            return self._cancel(job_id)
+
+    def _cancel(self, job_id: str) -> bool:
         with self._lock:
             job = self._jobs.get(job_id)
             if job is None:
@@ -323,9 +332,14 @@ class JobRunner:
             if job is not None and job.status in (STATUS_QUEUED, STATUS_RUNNING):
                 job.status = STATUS_CANCELLED
                 job.finished_at = time.time()
-            self._process = None
-            self._current = None
-            self._thread = None
+            # Clear the slots only if they still belong to the job we captured.
+            # cancel()/submit() serialize on _submit_lock so a newer job cannot
+            # appear mid-cancel there, but shutdown() calls us without that lock;
+            # this guard keeps us from tearing down a job we do not own.
+            if self._current is job:
+                self._process = None
+                self._current = None
+                self._thread = None
 
     def shutdown(self) -> None:
         self.cancel_current()
