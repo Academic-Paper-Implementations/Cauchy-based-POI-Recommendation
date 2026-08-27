@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { featureColor } from '../utils/feature-colors';
 import { toBounds, toLatLng } from '../utils/crs';
+import { createBaseLayer } from '../utils/offline-tiles';
 
 // One map for both kinds of dataset.
 //
@@ -47,6 +48,7 @@ export default function LeafletMap({
   const markersRef = useRef(new Map());
   const circleRef = useRef(null);
   const regionsRef = useRef(null);
+  const tileLayerRef = useRef(null);
 
   // Create the map once per CRS: Leaflet fixes the CRS at construction, so a
   // dataset of the other kind needs a new map rather than a reconfigured one.
@@ -62,10 +64,11 @@ export default function LeafletMap({
         : L.map(containerRef.current, { preferCanvas: true }).setView([39.9526, -75.1652], 12);
 
     if (crs !== 'xy') {
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19,
-      }).addTo(map);
+      // Offline-first base map: serves the locally-downloaded tile pack and only
+      // reaches the network for missing tiles. Removes the runtime dependency on
+      // a live tile server, which matters because some ISPs DNS-block
+      // openstreetmap.org and leave the map blank. See utils/offline-tiles.js.
+      tileLayerRef.current = createBaseLayer().addTo(map);
     }
 
     mapRef.current = map;
@@ -74,6 +77,7 @@ export default function LeafletMap({
       mapRef.current = null;
       markersRef.current = new Map();
       circleRef.current = null;
+      tileLayerRef.current = null;
     };
   }, [crs]);
 
@@ -86,18 +90,8 @@ export default function LeafletMap({
     markersRef.current = new Map();
     if (!instances.length) return undefined;
 
-    const layer = L.layerGroup().addTo(map);
-    instances.forEach((instance) => {
-      const marker = L.circleMarker(toLatLng(crs, instance), {
-        ...BASE_STYLE,
-        fillColor: featureColor(colors, instance.feature),
-      });
-      marker.bindTooltip(`${instance.feature} · ${instance.id}`, { direction: 'top' });
-      marker.on('click', () => onSelect(instance));
-      marker.addTo(layer);
-      markersRef.current.set(key(instance.feature, instance.number), marker);
-    });
-
+    // Frame the dataset first so the tiles we wait on are the ones for the final
+    // view, not the city-wide default the map was created at.
     const bounds = L.latLngBounds(instances.map((i) => toLatLng(crs, i)));
     map.fitBounds(bounds, { padding: [20, 20] });
 
@@ -105,7 +99,40 @@ export default function LeafletMap({
       onRecenterReady(() => map.fitBounds(bounds, { padding: [20, 20] }));
     }
 
-    return () => layer.remove();
+    let layer = null;
+    const addMarkers = () => {
+      if (layer) return;
+      layer = L.layerGroup().addTo(map);
+      instances.forEach((instance) => {
+        const marker = L.circleMarker(toLatLng(crs, instance), {
+          ...BASE_STYLE,
+          fillColor: featureColor(colors, instance.feature),
+        });
+        marker.bindTooltip(`${instance.feature} · ${instance.id}`, { direction: 'top' });
+        marker.on('click', () => onSelect(instance));
+        marker.addTo(layer);
+        markersRef.current.set(key(instance.feature, instance.number), marker);
+      });
+    };
+
+    // Paint the base map before dropping the markers on top, so the tiles never
+    // appear to vanish behind the points. CRS.Simple has no tiles to wait for;
+    // the timeout is a fallback for when tiles are cached (no further 'load'
+    // fires) or fail to load, so the markers always appear.
+    const tiles = tileLayerRef.current;
+    let timer = null;
+    if (crs === 'xy' || !tiles) {
+      addMarkers();
+    } else {
+      tiles.once('load', addMarkers);
+      timer = setTimeout(addMarkers, 1500);
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      if (tiles) tiles.off('load', addMarkers);
+      if (layer) layer.remove();
+    };
   }, [instances, colors, onSelect, crs, onRecenterReady]);
 
   // Restyle for the current selection instead of rebuilding the layer.
