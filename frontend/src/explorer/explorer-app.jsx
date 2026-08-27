@@ -251,6 +251,7 @@ export default function ExplorerApp() {
             colors={colors}
             selected={selected}
             neighbors={mapNeighbors}
+            focused={popupPoi}
             radiusM={ready && selected ? radiusM : 0}
             onSelect={handlePoiClick}
             crs="latlon"

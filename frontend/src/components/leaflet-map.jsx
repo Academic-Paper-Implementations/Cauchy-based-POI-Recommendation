@@ -20,6 +20,9 @@ import { createBaseLayer } from '../utils/offline-tiles';
 const BASE_STYLE = { radius: 3, weight: 0, fillOpacity: 0.65 };
 const NEIGHBOR_STYLE = { radius: 6, weight: 1.5, color: '#ffffff', fillOpacity: 1 };
 const SELECTED_STYLE = { radius: 9, weight: 2.5, color: '#ffffff', fillOpacity: 1 };
+// The place whose popup card is open (clicked on the map or picked from the
+// list): an amber ring so it stands out from the white selected/neighbour rings.
+const FOCUSED_STYLE = { radius: 10, weight: 3, color: '#f59e0b', fillOpacity: 1 };
 
 // Far enough out for `fitBounds` to frame a whole city at one-metre map units.
 const SIMPLE_MIN_ZOOM = -12;
@@ -35,6 +38,7 @@ export default function LeafletMap({
   colors,
   selected,
   neighbors,
+  focused,
   radiusM,
   onSelect,
   crs = 'latlon',
@@ -49,6 +53,13 @@ export default function LeafletMap({
   const circleRef = useRef(null);
   const regionsRef = useRef(null);
   const tileLayerRef = useRef(null);
+  // Latest click handler, read at click time. Keeping the handler out of the
+  // marker-rebuild effect's deps is what stops every selection from tearing down
+  // and rebuilding all markers (which would drop the highlight styling).
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
 
   // Create the map once per CRS: Leaflet fixes the CRS at construction, so a
   // dataset of the other kind needs a new map rather than a reconfigured one.
@@ -108,8 +119,11 @@ export default function LeafletMap({
           ...BASE_STYLE,
           fillColor: featureColor(colors, instance.feature),
         });
-        marker.bindTooltip(`${instance.feature} · ${instance.id}`, { direction: 'top' });
-        marker.on('click', () => onSelect(instance));
+        // Hover label: the place name when the dataset carries one, else the id.
+        marker.bindTooltip(`${instance.feature} · ${instance.name || instance.id}`, {
+          direction: 'top',
+        });
+        marker.on('click', () => onSelectRef.current(instance));
         marker.addTo(layer);
         markersRef.current.set(key(instance.feature, instance.number), marker);
       });
@@ -133,7 +147,9 @@ export default function LeafletMap({
       if (tiles) tiles.off('load', addMarkers);
       if (layer) layer.remove();
     };
-  }, [instances, colors, onSelect, crs, onRecenterReady]);
+    // onSelect is intentionally excluded (read via onSelectRef): the marker set
+    // depends only on the data, so a selection must not rebuild every marker.
+  }, [instances, colors, crs, onRecenterReady]);
 
   // Restyle for the current selection instead of rebuilding the layer.
   useEffect(() => {
@@ -142,9 +158,15 @@ export default function LeafletMap({
 
     const neighborKeys = new Set((neighbors || []).map((n) => key(n.feature, n.number)));
     const selectedKey = selected ? key(selected.feature, selected.number) : null;
+    const focusedKey = focused ? key(focused.feature, focused.number) : null;
 
     markers.forEach((marker, markerKey) => {
-      if (markerKey === selectedKey) {
+      // Focused (open popup) wins over selected/neighbour so a place picked from
+      // the list is always locatable on the map, even if it is also a neighbour.
+      if (markerKey === focusedKey) {
+        marker.setStyle({ ...FOCUSED_STYLE, fillColor: marker.options.fillColor });
+        marker.bringToFront();
+      } else if (markerKey === selectedKey) {
         marker.setStyle({ ...SELECTED_STYLE, fillColor: marker.options.fillColor });
         marker.bringToFront();
       } else if (neighborKeys.has(markerKey)) {
@@ -155,7 +177,17 @@ export default function LeafletMap({
         marker.setStyle(BASE_STYLE);
       }
     });
-  }, [selected, neighbors]);
+  }, [selected, neighbors, focused]);
+
+  // Bring a focused place into view when it is picked from the list while
+  // off-screen, so its amber ring is actually visible. Only pans (keeps zoom)
+  // and only when needed, so it never fights the user's current pan/zoom.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focused) return;
+    const center = toLatLng(crs, focused);
+    if (!map.getBounds().contains(center)) map.panTo(center);
+  }, [focused, crs]);
 
   // The epsilon circle around the selected instance.
   useEffect(() => {
