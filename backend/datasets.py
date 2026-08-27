@@ -227,10 +227,11 @@ def builtin_datasets() -> list[DatasetInfo]:
     return found
 
 
-# Bump whenever _read_source changes the instance-record shape, so a prepared
-# cache built by older code over a byte-identical source is treated as stale
-# instead of silently serving records that lack the new fields.
-_RECORD_SCHEMA_VERSION = 2
+# Bump whenever _read_source changes the instance-record shape OR which rows it
+# keeps, so a prepared cache built by older code over a byte-identical source is
+# treated as stale instead of silently serving the wrong set of records.
+# v3: permanently-closed businesses (is_open == "0") are dropped at the source.
+_RECORD_SCHEMA_VERSION = 3
 
 
 def _source_fingerprint(source: Path) -> dict:
@@ -322,6 +323,14 @@ def _read_source(info: DatasetInfo) -> list[dict]:
         for row in reader:
             feature = (row.get(columns.feature) or "").strip()
             if not feature:
+                continue
+            # Drop permanently-closed businesses (Yelp is_open == "0") at the
+            # source, so the map, the co-located list, and the mining all describe
+            # the same set of open venues. Without this the miner and the pattern
+            # query count closed places the map never draws, so a co-located spot
+            # can be listed with no marker inside the discovery circle. Only the
+            # cuisine datasets carry is_open; others are unaffected.
+            if "is_open" in columns.attributes and (row.get("is_open") or "").strip() == "0":
                 continue
             try:
                 x = float(row[columns.x])

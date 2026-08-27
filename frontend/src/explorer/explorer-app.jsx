@@ -87,10 +87,12 @@ export default function ExplorerApp() {
       setInstances([]);
       try {
         const body = await api.instances(city);
-        // is_open === "0" is a permanently-closed business — not worth showing.
-        const filtered = (body.instances || []).filter((i) => i.attributes?.is_open !== '0');
-        instancesCacheRef.current.set(city, filtered);
-        setInstances(filtered);
+        // Permanently-closed businesses (is_open === "0") are already dropped at
+        // the backend source, so the map, the co-located list, and the mining
+        // share one set of open venues — nothing to filter here.
+        const open = body.instances || [];
+        instancesCacheRef.current.set(city, open);
+        setInstances(open);
       } catch {
         setInstances([]);
       }
