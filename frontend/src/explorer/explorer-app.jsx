@@ -222,11 +222,25 @@ export default function ExplorerApp() {
             <>
               <DiscoveryRadiusControl radiusM={radiusM} epsM={minedEps} onChange={setRadiusM} />
               <div>
-                <h2 className="mb-2 text-sm font-semibold text-slate-300">
-                  {selected
-                    ? `Around ${selected.name || selected.feature}`
-                    : 'Click a place on the map'}
-                </h2>
+                <div className="group mb-2 flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-slate-300">
+                    {selected
+                      ? `Around ${selected.name || selected.feature}`
+                      : 'Click a place on the map'}
+                  </h2>
+                  {/* Browsing other places changes only the popup; this reveals
+                      on hover/focus so the origin place can be reopened. */}
+                  {selected && popupPoi?.id !== selected.id && (
+                    <button
+                      type="button"
+                      onClick={() => setPopupPoi(selected)}
+                      title={`Back to ${selected.name || selected.feature}`}
+                      className="shrink-0 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 opacity-0 transition hover:bg-slate-700 focus:opacity-100 group-hover:opacity-100"
+                    >
+                      ↩ Origin
+                    </button>
+                  )}
+                </div>
                 {detailError && <p className="text-sm text-rose-400">{detailError}</p>}
                 {selected && !detail && !detailError && (
                   <p className="text-sm text-slate-500">Searching nearby…</p>
